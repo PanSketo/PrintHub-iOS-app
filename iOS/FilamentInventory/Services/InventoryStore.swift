@@ -1,0 +1,209 @@
+import Foundation
+import Combine
+
+class InventoryStore: ObservableObject {
+    static let shared = InventoryStore()
+
+    @Published var filaments: [Filament] = []
+    @Published var printJobs: [PrintJob] = []
+    @Published var isLoading: Bool = false
+    @Published var errorMessage: String?
+    @Published var lowStockThreshold: Double = 200
+
+    private let nas = NASService.shared
+    private let localCacheKey = "local_filaments_cache"
+    private let printJobsCacheKey = "local_printjobs_cache"
+
+    // MARK: - Computed Stats
+    var totalSpend: Double {
+        filaments.reduce(0) { $0 + $1.pricePaid }
+    }
+
+    var totalFilaments: Int { filaments.count }
+
+    var lowStockFilaments: [Filament] {
+        filaments.filter { $0.remainingWeightG < lowStockThreshold && $0.remainingWeightG > 0 }
+    }
+
+    var emptyFilaments: [Filament] {
+        filaments.filter { $0.isEmpty }
+    }
+
+    var totalWeightRemaining: Double {
+        filaments.reduce(0) { $0 + $1.remainingWeightG }
+    }
+
+    var filamentsByType: [FilamentType: [Filament]] {
+        Dictionary(grouping: filaments, by: { $0.type })
+    }
+
+    private init() {
+        loadFromLocalCache()
+    }
+
+    // MARK: - Sync
+    func syncFromNAS() {
+        Task {
+            await MainActor.run { self.isLoading = true }
+            do {
+                let fetchedFilaments = try await nas.fetchFilaments()
+                let fetchedJobs = try await nas.fetchPrintJobs()
+                await MainActor.run {
+                    self.filaments = fetchedFilaments
+                    self.printJobs = fetchedJobs
+                    self.isLoading = false
+                    self.saveToLocalCache()
+                }
+                // Back-fill missing images silently in background
+                await backfillMissingImages(fetchedFilaments)
+            } catch {
+                await MainActor.run {
+                    self.errorMessage = error.localizedDescription
+                    self.isLoading = false
+                }
+            }
+        }
+    }
+
+    // Fetch and permanently save imageURL for any filament that is missing one
+    private func backfillMissingImages(_ filaments: [Filament]) async {
+        for filament in filaments where filament.imageURL == nil {
+            let imageURL = await FilamentLookupService.shared.searchFilamentImage(
+                brand: filament.brand,
+                color: filament.color.name,
+                type: filament.type.rawValue
+            )
+            guard let imageURL = imageURL else { continue }
+
+            var updated = filament
+            updated.imageURL = imageURL
+
+            // Update in memory immediately
+            await MainActor.run {
+                if let idx = self.filaments.firstIndex(where: { $0.id == filament.id }) {
+                    self.filaments[idx] = updated
+                }
+            }
+            // Persist to NAS so it's stored for next time
+            try? await nas.saveFilament(updated)
+        }
+        await MainActor.run { self.saveToLocalCache() }
+    }
+
+    // MARK: - Add Filament
+    func addFilament(_ filament: Filament) {
+        Task {
+            do {
+                try await nas.addFilament(filament)
+                await MainActor.run {
+                    self.filaments.append(filament)
+                    self.saveToLocalCache()
+                    NotificationManager.shared.scheduleAlertIfNeeded(for: filament)
+                }
+            } catch {
+                await MainActor.run { self.errorMessage = error.localizedDescription }
+            }
+        }
+    }
+
+    // MARK: - Update Filament
+    func updateFilament(_ filament: Filament) {
+        Task {
+            do {
+                try await nas.saveFilament(filament)
+                await MainActor.run {
+                    if let idx = self.filaments.firstIndex(where: { $0.id == filament.id }) {
+                        self.filaments[idx] = filament
+                        self.saveToLocalCache()
+                        NotificationManager.shared.scheduleAlertIfNeeded(for: filament)
+                    }
+                }
+            } catch {
+                await MainActor.run { self.errorMessage = error.localizedDescription }
+            }
+        }
+    }
+
+    // MARK: - Delete Filament
+    func deleteFilament(id: String) {
+        Task {
+            do {
+                try await nas.deleteFilament(id: id)
+                await MainActor.run {
+                    self.filaments.removeAll { $0.id == id }
+                    self.saveToLocalCache()
+                }
+            } catch {
+                await MainActor.run { self.errorMessage = error.localizedDescription }
+            }
+        }
+    }
+
+    // MARK: - Log Print Job
+    func logPrintJob(_ job: PrintJob) {
+        Task {
+            do {
+                try await nas.addPrintJob(job)
+                // Capture the updated filament inside MainActor, then persist outside
+                let updatedFilament: Filament? = await MainActor.run {
+                    self.printJobs.append(job)
+                    guard let idx = self.filaments.firstIndex(where: { $0.id == job.filamentId }) else { return nil }
+                    var updated = self.filaments[idx]
+                    updated.remainingWeightG = max(0, updated.remainingWeightG - job.weightUsedG)
+                    updated.stockStatus = StockStatus.from(remaining: updated.remainingWeightG, total: updated.totalWeightG)
+                    updated.lastUpdated = Date()
+                    updated.printJobs.append(job)
+                    self.filaments[idx] = updated
+                    self.saveToLocalCache()
+                    NotificationManager.shared.scheduleAlertIfNeeded(for: updated)
+                    return updated
+                }
+                // Persist to NAS using the captured value — no race condition
+                if let filament = updatedFilament {
+                    try await nas.saveFilament(filament)
+                }
+            } catch {
+                await MainActor.run { self.errorMessage = error.localizedDescription }
+            }
+        }
+    }
+
+    // MARK: - Filter
+    func filteredFilaments(searchText: String, type: FilamentType?, status: StockStatus?) -> [Filament] {
+        filaments.filter { f in
+            let matchesSearch = searchText.isEmpty ||
+                f.brand.localizedCaseInsensitiveContains(searchText) ||
+                f.color.name.localizedCaseInsensitiveContains(searchText) ||
+                f.type.rawValue.localizedCaseInsensitiveContains(searchText) ||
+                f.sku.localizedCaseInsensitiveContains(searchText)
+            let matchesType = type == nil || f.type == type
+            let matchesStatus = status == nil || f.stockStatus == status
+            return matchesSearch && matchesType && matchesStatus
+        }
+    }
+
+    // MARK: - Local Cache
+    private func saveToLocalCache() {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        if let data = try? encoder.encode(filaments) {
+            UserDefaults.standard.set(data, forKey: localCacheKey)
+        }
+        if let data = try? encoder.encode(printJobs) {
+            UserDefaults.standard.set(data, forKey: printJobsCacheKey)
+        }
+    }
+
+    private func loadFromLocalCache() {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        if let data = UserDefaults.standard.data(forKey: localCacheKey),
+           let cached = try? decoder.decode([Filament].self, from: data) {
+            self.filaments = cached
+        }
+        if let data = UserDefaults.standard.data(forKey: printJobsCacheKey),
+           let cached = try? decoder.decode([PrintJob].self, from: data) {
+            self.printJobs = cached
+        }
+    }
+}

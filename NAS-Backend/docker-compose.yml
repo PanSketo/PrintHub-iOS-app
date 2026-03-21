@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  # ── Main API backend ──────────────────────────────────────────────────────────
+  filament-backend:
+    image: node:20-alpine
+    container_name: filament-inventory-backend
+    working_dir: /app
+    volumes:
+      - ./:/app
+      - filament_data:/app/data
+      - backend_modules:/app/node_modules
+    command: sh -c "npm install --prefer-offline 2>/dev/null || npm install && node server.js"
+    ports:
+      - "3456:3456"
+    environment:
+      - PORT=3456
+      - API_KEY=your-super-secret-api-key-change-this
+      - DB_PATH=/app/data/filaments.db
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3456/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ── Bambu Lab MQTT Bridge ─────────────────────────────────────────────────────
+  mqtt-bridge:
+    image: node:20-alpine
+    container_name: filament-mqtt-bridge
+    working_dir: /app/mqtt-bridge
+    volumes:
+      - ./:/app
+      - filament_data:/app/data
+      - bridge_modules:/app/mqtt-bridge/node_modules
+    command: sh -c "npm install --prefer-offline 2>/dev/null || npm install && node bridge.js"
+    environment:
+      - PRINTER_IP=192.168.1.20
+      - PRINTER_SERIAL=22E8BJ610904083
+      - PRINTER_ACCESS_CODE=5726da27
+      - DB_PATH=/app/data/filaments.db
+      - API_KEY=your-super-secret-api-key-change-this
+    restart: unless-stopped
+    depends_on:
+      - filament-backend
+
+volumes:
+  filament_data:
+    driver: local
+  backend_modules:
+    driver: local
+  bridge_modules:
+    driver: local
