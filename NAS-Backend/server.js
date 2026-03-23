@@ -13,6 +13,10 @@ const API_KEY = process.env.API_KEY || 'change-this-to-a-strong-random-key';
 const PRINTER_IP           = process.env.PRINTER_IP           || '';
 const PRINTER_ACCESS_CODE  = process.env.PRINTER_ACCESS_CODE  || '';
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'data', 'filaments.db');
+// Optional: set to your DDNS / public URL so mirrored image URLs work outside the home network.
+// Example: BASE_URL=http://myhome.ddns.net:3456
+// If unset, the URL is inferred from the incoming request (local IP only).
+const BASE_URL = (process.env.BASE_URL || '').replace(/\/$/, '');
 
 // Ensure data directory exists
 const dataDir = path.dirname(DB_PATH);
@@ -345,7 +349,7 @@ app.post('/api/images/mirror', (req, res) => {
   }
 
   const urlHash = crypto.createHash('sha256').update(imageUrl).digest('hex').slice(0, 20);
-  const baseUrl = req.protocol + '://' + req.get('host');
+  const baseUrl = BASE_URL || (req.protocol + '://' + req.get('host'));
 
   // Return cached file if it already exists (skip re-download)
   for (const ext of ['.jpg', '.png', '.webp', '.gif']) {

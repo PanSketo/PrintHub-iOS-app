@@ -20,6 +20,9 @@ services:
       - PRINTER_IP=192.168.1.20
       - PRINTER_SERIAL=22E8BJ610904083
       - PRINTER_ACCESS_CODE=5726da27
+      # Set BASE_URL to your DDNS address so mirrored image URLs work outside the home network.
+      # Without this, image URLs are built from the local request host (LAN IP) and won't load over DDNS.
+      # Example: - BASE_URL=http://myhome.ddns.net:3456
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:3456/api/health"]
