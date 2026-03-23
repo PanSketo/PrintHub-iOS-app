@@ -65,29 +65,53 @@ class InventoryStore: ObservableObject {
         }
     }
 
-    // Fetch and permanently save imageURL for any filament that is missing one
+    // Fetch and permanently save imageURL for any filament that is missing one,
+    // and mirror any remote image URLs to the NAS for local caching.
     private func backfillMissingImages(_ filaments: [Filament]) async {
-        for filament in filaments where filament.imageURL == nil {
-            let imageURL = await FilamentLookupService.shared.searchFilamentImage(
-                brand: filament.brand,
-                color: filament.color.name,
-                type: filament.type.rawValue
-            )
-            guard let imageURL = imageURL else { continue }
+        let nasBase = nas.baseURL
+        var anyChange = false
 
+        for filament in filaments {
             var updated = filament
-            updated.imageURL = imageURL
+            var changed = false
 
-            // Update in memory immediately
+            // Step 1: If no imageURL at all, search for one
+            if updated.imageURL == nil {
+                let imageURL = await FilamentLookupService.shared.searchFilamentImage(
+                    brand: filament.brand,
+                    color: filament.color.name,
+                    type: filament.type.rawValue
+                )
+                if let imageURL = imageURL {
+                    updated.imageURL = imageURL
+                    changed = true
+                }
+            }
+
+            // Step 2: If imageURL exists but is still a remote URL (not yet on NAS), mirror it
+            if let currentURL = updated.imageURL,
+               !nasBase.isEmpty,
+               !currentURL.hasPrefix(nasBase) {
+                if let mirrored = await nas.mirrorImage(remoteURL: currentURL) {
+                    updated.imageURL = mirrored
+                    changed = true
+                }
+            }
+
+            guard changed else { continue }
+            anyChange = true
+
             await MainActor.run {
                 if let idx = self.filaments.firstIndex(where: { $0.id == filament.id }) {
                     self.filaments[idx] = updated
                 }
             }
-            // Persist to NAS so it's stored for next time
             try? await nas.saveFilament(updated)
         }
-        await MainActor.run { self.saveToLocalCache() }
+
+        if anyChange {
+            await MainActor.run { self.saveToLocalCache() }
+        }
     }
 
     // MARK: - Add Filament
