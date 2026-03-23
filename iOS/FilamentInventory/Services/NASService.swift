@@ -238,6 +238,9 @@ class NASService: ObservableObject {
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
         request.addValue(apiKey, forHTTPHeaderField: "X-API-Key")
         request.httpBody = try? JSONSerialization.data(withJSONObject: ["url": remoteURL])
+        // Server needs up to 30 s to download the remote image — give iOS 60 s so the
+        // server's own timeout fires first and we receive the 502 rather than race with it.
+        request.timeoutInterval = 60
         guard let (data, response) = try? await session.data(for: request),
               (response as? HTTPURLResponse)?.statusCode == 200,
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: String],

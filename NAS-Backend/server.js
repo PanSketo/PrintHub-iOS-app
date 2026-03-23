@@ -307,7 +307,12 @@ function downloadImageBuffer(imageUrl, callback, redirectCount = 0) {
   let parsedUrl;
   try { parsedUrl = new URL(imageUrl); } catch (e) { return callback(e); }
   const protocol = parsedUrl.protocol === 'https:' ? https : http;
-  const req = protocol.get(imageUrl, { headers: { 'User-Agent': 'FilamentInventory/1.0' } }, (response) => {
+  const req = protocol.get(imageUrl, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (compatible; FilamentInventory/1.0)',
+      'Accept': 'image/webp,image/jpeg,image/png,image/*,*/*',
+    }
+  }, (response) => {
     if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
       response.resume();
       const redirectUrl = new URL(response.headers.location, imageUrl).href;
@@ -324,7 +329,7 @@ function downloadImageBuffer(imageUrl, callback, redirectCount = 0) {
     response.on('error', callback);
   });
   req.on('error', callback);
-  req.setTimeout(15000, () => { req.destroy(); callback(new Error('Timeout')); });
+  req.setTimeout(30000, () => { req.destroy(); callback(new Error('Timeout downloading image')); });
 }
 
 function extForContentType(ct) {
