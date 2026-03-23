@@ -77,6 +77,8 @@ let lastAMSReport = {};       // { "ams_0_slot_0": { tray_weight: 123, ... }, ..
 let weightAtStart = {};       // snapshot of weights when print began
 let mqttClient = null;
 let reconnectTimer = null;
+let lastFilamentUsedReport = null;  // mc_print_filament_used grams from Bambu at end of print
+let lastActiveSlotKey = null;       // most recent active AMS slot key during a print
 
 // ── Helper: save printer state to DB (for iOS app to poll) ───────────────────
 function savePrinterState(state) {
@@ -211,7 +213,17 @@ function processPrinterMessage(payload) {
       // Track which slot is currently active
       if (print.ams.tray_now !== undefined) {
         liveState.active_ams_slot = print.ams.tray_now;
+        const slotIdx = parseInt(print.ams.tray_now);
+        if (!isNaN(slotIdx) && slotIdx !== 255) {
+          lastActiveSlotKey = `ams_0_slot_${slotIdx}`;
+        }
       }
+    }
+
+    // ── Capture exact filament usage reported by printer (grams) ─────────────
+    if (print.mc_print_filament_used !== undefined) {
+      lastFilamentUsedReport = print.mc_print_filament_used;
+      console.log(`📊 Filament used report from printer: ${lastFilamentUsedReport}g`);
     }
 
     savePrinterState({ live: liveState });
@@ -235,6 +247,8 @@ function processPrinterMessage(payload) {
         Object.entries(lastAMSReport).forEach(([key, slot]) => {
           weightAtStart[key] = slot.remain;
         });
+        lastFilamentUsedReport = null;
+        lastActiveSlotKey = null;
         console.log(`▶️  Print started: "${currentPrintName}"`);
       }
 
@@ -249,12 +263,6 @@ function processPrinterMessage(payload) {
       }
 
       lastPrintState = currentState;
-    }
-
-    // ── Handle filament usage report (mc_print_filament) ─────────────────────
-    // Bambu reports exact filament used at end of print
-    if (print.mc_print_filament_used !== undefined && lastPrintState === 'FINISH') {
-      console.log(`📊 Filament used report: ${JSON.stringify(print.mc_print_filament_used)}`);
     }
 
   } catch (err) {
@@ -311,13 +319,35 @@ function handlePrintComplete(failed) {
     }
   });
 
+  // Fallback: AMS % delta unavailable (non-NFC spools) — use exact grams from printer
+  if (totalDeducted === 0 && lastFilamentUsedReport !== null) {
+    const totalGrams = parseFloat(lastFilamentUsedReport);
+    if (totalGrams > 0.5) {
+      // Prefer the slot that was last active; fall back to first mapped slot
+      const targetMapping =
+        mappings.find(m => m.slot_key === lastActiveSlotKey) || mappings[0];
+      if (targetMapping) {
+        deductFilamentWeight(
+          targetMapping.filament_id,
+          totalGrams,
+          `${currentPrintName}${failed ? ' (failed)' : ''}`,
+          durationSeconds
+        );
+        totalDeducted = totalGrams;
+        console.log(`ℹ️  AMS % unavailable — used printer report: ${totalGrams}g → ${targetMapping.slot_key}`);
+      }
+    }
+  }
+
   if (totalDeducted === 0) {
-    console.log('ℹ️  No weight deducted (AMS% data unavailable or no mapped slots used)');
+    console.log('ℹ️  No weight deducted (no printer weight data and AMS% unavailable)');
   }
 
   // Reset tracking
   printStartTime = null;
   weightAtStart = {};
+  lastFilamentUsedReport = null;
+  lastActiveSlotKey = null;
 }
 
 // ── Connect to printer MQTT ───────────────────────────────────────────────────

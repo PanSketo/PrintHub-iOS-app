@@ -75,9 +75,7 @@ app.get('/api/printer/debug', (req, res) => {
   }
 });
 
-app.use(authenticate);
-
-// CORS for local dev
+// CORS for local dev — must be before authenticate so 401 responses include CORS headers
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Headers', 'Content-Type, X-API-Key');
@@ -85,6 +83,8 @@ app.use((req, res, next) => {
   if (req.method === 'OPTIONS') return res.sendStatus(200);
   next();
 });
+
+app.use(authenticate);
 
 // ── Filaments ────────────────────────────────────────────────────────────────
 // GET all filaments
