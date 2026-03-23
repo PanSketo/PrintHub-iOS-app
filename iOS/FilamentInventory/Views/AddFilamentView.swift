@@ -428,6 +428,12 @@ struct AddFilamentView: View {
                     brand: brand, color: colorName, type: selectedType.rawValue
                 )
             }
+            // Mirror image to NAS so it survives the original URL going offline
+            if let remoteURL = finalImageURL,
+               !remoteURL.hasPrefix(NASService.shared.baseURL) {
+                let mirrored = await NASService.shared.mirrorImage(remoteURL: remoteURL)
+                finalImageURL = mirrored ?? remoteURL
+            }
             await MainActor.run {
                 filament.brandLogoURL = logoURL
                 if let imgURL = finalImageURL { filament.imageURL = imgURL }

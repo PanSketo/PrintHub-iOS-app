@@ -226,6 +226,25 @@ class NASService: ObservableObject {
         }
     }
 
+    // MARK: - Mirror Image
+    /// Downloads a remote image URL onto the NAS and returns the local server URL.
+    /// Returns nil silently if the NAS is not configured, unreachable, or the download fails,
+    /// so callers can fall back to the original URL without crashing.
+    func mirrorImage(remoteURL: String) async -> String? {
+        guard isConfigured,
+              let url = URL(string: "\(baseURL)/api/images/mirror") else { return nil }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.addValue(apiKey, forHTTPHeaderField: "X-API-Key")
+        request.httpBody = try? JSONSerialization.data(withJSONObject: ["url": remoteURL])
+        guard let (data, response) = try? await session.data(for: request),
+              (response as? HTTPURLResponse)?.statusCode == 200,
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: String],
+              let localURL = json["localURL"] else { return nil }
+        return localURL
+    }
+
     func deleteAMSMapping(slotKey: String) async throws {
         guard let url = URL(string: "\(baseURL)/api/ams/mappings/\(slotKey)") else {
             throw NASError.invalidURL
