@@ -27,6 +27,7 @@
 		93160D2EB7562BFA7A599ECE /* PriceHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3597108D3A66A954BA8FD9EE /* PriceHistoryView.swift */; };
 		B6C08DB51CB9A9D5881C0DEF /* RestockView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5800C33B524B693C848AB7A7 /* RestockView.swift */; };
 		8CEA8B5C5547BB4023EA91DF /* PrinterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09C840D46790EF0AC05C14F5 /* PrinterView.swift */; };
+		F4A2C1D3E5B6784901234567 /* CameraFeedCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9B8C7D6E5F4321098765432 /* CameraFeedCard.swift */; };
 		76799C555F79C18C47A7AE65 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3EC4EA09CED15A71400F27B6 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
@@ -52,6 +53,7 @@
 		3597108D3A66A954BA8FD9EE /* PriceHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PriceHistoryView.swift; sourceTree = "<group>"; };
 		5800C33B524B693C848AB7A7 /* RestockView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RestockView.swift; sourceTree = "<group>"; };
 		09C840D46790EF0AC05C14F5 /* PrinterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrinterView.swift; sourceTree = "<group>"; };
+		A9B8C7D6E5F4321098765432 /* CameraFeedCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraFeedCard.swift; sourceTree = "<group>"; };
 		3EC4EA09CED15A71400F27B6 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		620567A71E5CA3AB8765C812 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -132,6 +134,7 @@
 				3597108D3A66A954BA8FD9EE /* PriceHistoryView.swift */,
 				5800C33B524B693C848AB7A7 /* RestockView.swift */,
 				09C840D46790EF0AC05C14F5 /* PrinterView.swift */,
+				A9B8C7D6E5F4321098765432 /* CameraFeedCard.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -225,6 +228,7 @@
 				93160D2EB7562BFA7A599ECE /* PriceHistoryView.swift in Sources */,
 				B6C08DB51CB9A9D5881C0DEF /* RestockView.swift in Sources */,
 				8CEA8B5C5547BB4023EA91DF /* PrinterView.swift in Sources */,
+				F4A2C1D3E5B6784901234567 /* CameraFeedCard.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
