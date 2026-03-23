@@ -135,7 +135,6 @@ struct AddFilamentView: View {
                             Text(type.rawValue).tag(type)
                         }
                     }
-                    .simultaneousGesture(TapGesture().onEnded { focusedField = nil })
                 } header: {
                     Text("Product Info")
                 }
