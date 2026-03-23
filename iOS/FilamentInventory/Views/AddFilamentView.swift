@@ -130,9 +130,16 @@ struct AddFilamentView: View {
                                 }
                             }
                     }
-                    Picker("Type", selection: $selectedType) {
-                        ForEach(FilamentType.allCases, id: \.self) { type in
-                            Text(type.rawValue).tag(type)
+                    HStack {
+                        Text("Type")
+                        Spacer()
+                        Menu {
+                            ForEach(FilamentType.allCases, id: \.self) { type in
+                                Button(type.rawValue) { selectedType = type }
+                            }
+                        } label: {
+                            Text(selectedType.rawValue)
+                                .foregroundColor(.secondary)
                         }
                     }
                 } header: {
