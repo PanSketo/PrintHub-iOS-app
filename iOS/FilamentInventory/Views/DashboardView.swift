@@ -42,6 +42,11 @@ struct DashboardView: View {
                     // Sync status
                     SyncStatusBar()
 
+                    // Live printer camera feed
+                    if nasService.isConfigured {
+                        CameraFeedCard()
+                    }
+
                     // Low stock alerts
                     if !store.lowStockFilaments.isEmpty {
                         LowStockSection()

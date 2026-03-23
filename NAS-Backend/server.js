@@ -5,10 +5,13 @@ const crypto = require('crypto');
 const fs = require('fs');
 const https = require('https');
 const http = require('http');
+const { spawn } = require('child_process');
 
 const app = express();
 const PORT = process.env.PORT || 3456;
 const API_KEY = process.env.API_KEY || 'change-this-to-a-strong-random-key';
+const PRINTER_IP           = process.env.PRINTER_IP           || '';
+const PRINTER_ACCESS_CODE  = process.env.PRINTER_ACCESS_CODE  || '';
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'data', 'filaments.db');
 
 // Ensure data directory exists
@@ -358,6 +361,89 @@ app.post('/api/images/mirror', (req, res) => {
       res.json({ localURL: `${baseUrl}/images/${filename}` });
     });
   });
+});
+
+// ── Camera Stream ─────────────────────────────────────────────────────────────
+// Proxies the Bambu Lab RTSPS camera as an MJPEG-over-HTTP stream so the iOS
+// app can display a live feed without needing native RTSP support.
+// Auth via X-API-Key header (same as all other endpoints).
+app.get('/api/camera/stream', (req, res) => {
+  const key = req.headers['x-api-key'];
+  if (!key || key !== API_KEY) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  if (!PRINTER_IP || !PRINTER_ACCESS_CODE) {
+    return res.status(503).json({ error: 'Printer camera not configured — set PRINTER_IP and PRINTER_ACCESS_CODE in docker-compose.yml' });
+  }
+
+  const boundary = 'mjpeg_frame';
+  res.writeHead(200, {
+    'Content-Type': `multipart/x-mixed-replace; boundary=${boundary}`,
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+    'Connection': 'keep-alive',
+    'Transfer-Encoding': 'chunked'
+  });
+
+  const rtspUrl = `rtsps://bblp:${PRINTER_ACCESS_CODE}@${PRINTER_IP}:322/streaming/live/1`;
+
+  const ffmpeg = spawn('ffmpeg', [
+    '-loglevel', 'error',
+    '-rtsp_transport', 'tcp',
+    '-i', rtspUrl,
+    '-f', 'image2pipe',
+    '-vcodec', 'mjpeg',
+    '-q:v', '5',   // JPEG quality 1-31, lower = better
+    '-r', '5',     // 5 fps — balanced quality vs NAS bandwidth
+    'pipe:1'
+  ]);
+
+  let buffer = Buffer.alloc(0);
+  const SOI = Buffer.from([0xFF, 0xD8]);
+  const EOI = Buffer.from([0xFF, 0xD9]);
+
+  ffmpeg.stdout.on('data', (chunk) => {
+    buffer = Buffer.concat([buffer, chunk]);
+
+    // Extract every complete JPEG frame from the accumulated buffer
+    while (buffer.length >= 4) {
+      const startIdx = buffer.indexOf(SOI);
+      if (startIdx === -1) { buffer = Buffer.alloc(0); break; }
+
+      const endIdx = buffer.indexOf(EOI, startIdx + 2);
+      if (endIdx === -1) {
+        if (startIdx > 0) buffer = buffer.slice(startIdx);
+        break;
+      }
+
+      const frame = buffer.slice(startIdx, endIdx + 2);
+      const header = `--${boundary}\r\nContent-Type: image/jpeg\r\nContent-Length: ${frame.length}\r\n\r\n`;
+
+      if (!res.writableEnded) {
+        res.write(header);
+        res.write(frame);
+        res.write('\r\n');
+      }
+
+      buffer = buffer.slice(endIdx + 2);
+    }
+  });
+
+  ffmpeg.stderr.on('data', (data) => {
+    console.error('[camera]', data.toString().trim());
+  });
+
+  ffmpeg.on('close', (code) => {
+    console.log(`[camera] ffmpeg exited (code ${code})`);
+    if (!res.writableEnded) res.end();
+  });
+
+  ffmpeg.on('error', (err) => {
+    console.error('[camera] ffmpeg spawn error:', err.message);
+    if (!res.writableEnded) res.end();
+  });
+
+  // Kill ffmpeg when the client disconnects
+  res.on('close', () => { try { ffmpeg.kill('SIGTERM'); } catch (_) {} });
 });
 
 // ── Start
