@@ -101,12 +101,13 @@ class InventoryStore: ObservableObject {
             guard changed else { continue }
             anyChange = true
 
+            let snapshot = updated   // immutable copy — avoids Swift 6 captured-var warning
             await MainActor.run {
                 if let idx = self.filaments.firstIndex(where: { $0.id == filament.id }) {
-                    self.filaments[idx] = updated
+                    self.filaments[idx] = snapshot
                 }
             }
-            try? await nas.saveFilament(updated)
+            try? await nas.saveFilament(snapshot)
         }
 
         if anyChange {
