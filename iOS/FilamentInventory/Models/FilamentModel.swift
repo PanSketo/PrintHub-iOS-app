@@ -227,6 +227,39 @@ struct PrinterLiveState: Codable {
         case activeAMSSlot = "active_ams_slot"
     }
 
+    // Custom decoder: Bambu may send numeric fields as Int or Double, and
+    // active_ams_slot as an Int rather than a String — handle all variants.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        printStatus       = (try? c.decodeIfPresent(String.self, forKey: .printStatus))    ?? "IDLE"
+        printName         = (try? c.decodeIfPresent(String.self, forKey: .printName))      ?? ""
+        remainingMinutes  = (try? c.decodeIfPresent(Int.self,    forKey: .remainingMinutes)) ?? 0
+        layerCurrent      = (try? c.decodeIfPresent(Int.self,    forKey: .layerCurrent))    ?? 0
+        layerTotal        = (try? c.decodeIfPresent(Int.self,    forKey: .layerTotal))      ?? 0
+        nozzleTemp        = (try? c.decodeIfPresent(Double.self,  forKey: .nozzleTemp))     ?? 0
+        bedTemp           = (try? c.decodeIfPresent(Double.self,  forKey: .bedTemp))        ?? 0
+        chamberTemp       = (try? c.decodeIfPresent(Double.self,  forKey: .chamberTemp))    ?? 0
+        printSpeed        = (try? c.decodeIfPresent(Int.self,    forKey: .printSpeed))      ?? 2
+        timestamp         = (try? c.decodeIfPresent(String.self, forKey: .timestamp))      ?? ""
+        amsSlots          = (try? c.decodeIfPresent([String: AMSSlotState].self, forKey: .amsSlots)) ?? nil
+
+        // progress can arrive as Int or Double from Bambu
+        if let i = (try? c.decodeIfPresent(Int.self, forKey: .progress)) ?? nil {
+            progress = i
+        } else {
+            progress = Int((try? c.decodeIfPresent(Double.self, forKey: .progress)) ?? nil ?? 0)
+        }
+
+        // active_ams_slot: bridge now stringifies, but guard against bare Int from Bambu
+        if let s = (try? c.decodeIfPresent(String.self, forKey: .activeAMSSlot)) ?? nil {
+            activeAMSSlot = s
+        } else if let i = (try? c.decodeIfPresent(Int.self, forKey: .activeAMSSlot)) ?? nil {
+            activeAMSSlot = String(i)
+        } else {
+            activeAMSSlot = nil
+        }
+    }
+
     // "255" means no active slot (idle), otherwise 0-3 = slot index
     var activeAMSSlotIndex: Int? {
         guard let s = activeAMSSlot, let i = Int(s), i != 255 else { return nil }

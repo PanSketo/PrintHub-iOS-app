@@ -211,8 +211,9 @@ function processPrinterMessage(payload) {
       liveState.ams_slots = amsSlots;
 
       // Track which slot is currently active
+      // Stringify so the iOS decoder (String?) doesn't get a type-mismatch on Int
       if (print.ams.tray_now !== undefined) {
-        liveState.active_ams_slot = print.ams.tray_now;
+        liveState.active_ams_slot = String(print.ams.tray_now);
         const slotIdx = parseInt(print.ams.tray_now);
         if (!isNaN(slotIdx) && slotIdx !== 255) {
           lastActiveSlotKey = `ams_0_slot_${slotIdx}`;
