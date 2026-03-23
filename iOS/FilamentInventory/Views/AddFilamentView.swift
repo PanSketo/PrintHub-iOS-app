@@ -130,9 +130,16 @@ struct AddFilamentView: View {
                                 }
                             }
                     }
-                    Picker("Type", selection: $selectedType) {
-                        ForEach(FilamentType.allCases, id: \.self) { type in
-                            Text(type.rawValue).tag(type)
+                    HStack {
+                        Text("Type")
+                        Spacer()
+                        Menu {
+                            ForEach(FilamentType.allCases, id: \.self) { type in
+                                Button(type.rawValue) { selectedType = type }
+                            }
+                        } label: {
+                            Text(selectedType.rawValue)
+                                .foregroundColor(.secondary)
                         }
                     }
                 } header: {
@@ -420,6 +427,12 @@ struct AddFilamentView: View {
                 finalImageURL = await FilamentLookupService.shared.searchFilamentImage(
                     brand: brand, color: colorName, type: selectedType.rawValue
                 )
+            }
+            // Mirror image to NAS so it survives the original URL going offline
+            if let remoteURL = finalImageURL,
+               !remoteURL.hasPrefix(NASService.shared.baseURL) {
+                let mirrored = await NASService.shared.mirrorImage(remoteURL: remoteURL)
+                finalImageURL = mirrored ?? remoteURL
             }
             await MainActor.run {
                 filament.brandLogoURL = logoURL

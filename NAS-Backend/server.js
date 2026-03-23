@@ -3,6 +3,8 @@ const Database = require('better-sqlite3');
 const path = require('path');
 const crypto = require('crypto');
 const fs = require('fs');
+const https = require('https');
+const http = require('http');
 
 const app = express();
 const PORT = process.env.PORT || 3456;
@@ -12,6 +14,10 @@ const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'data', 'filaments.d
 // Ensure data directory exists
 const dataDir = path.dirname(DB_PATH);
 if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+
+// Images directory for mirrored spool photos
+const imagesDir = path.join(dataDir, 'images');
+if (!fs.existsSync(imagesDir)) fs.mkdirSync(imagesDir, { recursive: true });
 
 // Init DB
 const db = new Database(DB_PATH);
@@ -74,6 +80,9 @@ app.get('/api/printer/debug', (req, res) => {
     res.json({ error: err.message, rows: [] });
   }
 });
+
+// Serve mirrored images — no auth so UIImage/AsyncImage can load them directly
+app.use('/images', express.static(imagesDir));
 
 // CORS for local dev — must be before authenticate so 401 responses include CORS headers
 app.use((req, res, next) => {
@@ -284,6 +293,71 @@ app.get('/api/printer/state', (req, res) => {
     // Always return valid JSON — never a 500 — so iOS shows offline state gracefully
     res.json({ connected: false, live: null, bridge_active: false, error: err.message });
   }
+});
+
+// ── Image mirroring ───────────────────────────────────────────────────────────
+// Downloads a remote image URL and stores it locally so it survives link rot.
+// Same URL always produces the same filename (SHA-256 of URL), acting as a cache.
+
+function downloadImageBuffer(imageUrl, callback, redirectCount = 0) {
+  if (redirectCount > 5) return callback(new Error('Too many redirects'));
+  let parsedUrl;
+  try { parsedUrl = new URL(imageUrl); } catch (e) { return callback(e); }
+  const protocol = parsedUrl.protocol === 'https:' ? https : http;
+  const req = protocol.get(imageUrl, { headers: { 'User-Agent': 'FilamentInventory/1.0' } }, (response) => {
+    if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
+      response.resume();
+      const redirectUrl = new URL(response.headers.location, imageUrl).href;
+      return downloadImageBuffer(redirectUrl, callback, redirectCount + 1);
+    }
+    if (response.statusCode !== 200) {
+      response.resume();
+      return callback(new Error(`HTTP ${response.statusCode}`));
+    }
+    const contentType = (response.headers['content-type'] || '').split(';')[0].trim();
+    const chunks = [];
+    response.on('data', chunk => chunks.push(chunk));
+    response.on('end', () => callback(null, Buffer.concat(chunks), contentType));
+    response.on('error', callback);
+  });
+  req.on('error', callback);
+  req.setTimeout(15000, () => { req.destroy(); callback(new Error('Timeout')); });
+}
+
+function extForContentType(ct) {
+  const map = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp', 'image/gif': '.gif' };
+  return map[ct] || '.jpg';
+}
+
+// POST /api/images/mirror — authenticated
+app.post('/api/images/mirror', (req, res) => {
+  const { url: imageUrl } = req.body;
+  if (!imageUrl || typeof imageUrl !== 'string') {
+    return res.status(400).json({ error: 'url is required' });
+  }
+
+  const urlHash = crypto.createHash('sha256').update(imageUrl).digest('hex').slice(0, 20);
+  const baseUrl = req.protocol + '://' + req.get('host');
+
+  // Return cached file if it already exists (skip re-download)
+  for (const ext of ['.jpg', '.png', '.webp', '.gif']) {
+    if (fs.existsSync(path.join(imagesDir, urlHash + ext))) {
+      return res.json({ localURL: `${baseUrl}/images/${urlHash}${ext}` });
+    }
+  }
+
+  downloadImageBuffer(imageUrl, (err, data, contentType) => {
+    if (err) {
+      console.error('Image mirror failed:', err.message);
+      return res.status(502).json({ error: 'Failed to download image: ' + err.message });
+    }
+    const ext = extForContentType(contentType);
+    const filename = urlHash + ext;
+    fs.writeFile(path.join(imagesDir, filename), data, (writeErr) => {
+      if (writeErr) return res.status(500).json({ error: writeErr.message });
+      res.json({ localURL: `${baseUrl}/images/${filename}` });
+    });
+  });
 });
 
 // ── Start
