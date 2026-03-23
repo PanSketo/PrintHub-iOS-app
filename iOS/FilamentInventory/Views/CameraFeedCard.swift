@@ -60,6 +60,31 @@ final class MJPEGStreamer: NSObject, ObservableObject, URLSessionDataDelegate {
     // MARK: - URLSessionDataDelegate
 
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask,
+                    didReceive response: URLResponse,
+                    completionHandler: @escaping (URLSession.ResponseDisposition) -> Void) {
+        guard let http = response as? HTTPURLResponse else {
+            completionHandler(.allow)
+            return
+        }
+        switch http.statusCode {
+        case 200:
+            completionHandler(.allow)
+        case 503:
+            DispatchQueue.main.async {
+                self.isStreaming = false
+                self.errorMessage = "Camera unavailable — set PRINTER_IP & PRINTER_ACCESS_CODE in docker-compose.yml"
+            }
+            completionHandler(.cancel)
+        default:
+            DispatchQueue.main.async {
+                self.isStreaming = false
+                self.errorMessage = "Camera stream error (HTTP \(http.statusCode))"
+            }
+            completionHandler(.cancel)
+        }
+    }
+
+    func urlSession(_ session: URLSession, dataTask: URLSessionDataTask,
                     didReceive data: Data) {
         buffer.append(data)
         extractFrames()
@@ -118,6 +143,7 @@ struct CameraFeedCard: View {
         }
         .background(Color(.secondarySystemBackground))
         .cornerRadius(16)
+        .onAppear { streamer.start(baseURL: nasService.baseURL, apiKey: nasService.apiKey) }
         .onDisappear { streamer.stop() }
     }
 
