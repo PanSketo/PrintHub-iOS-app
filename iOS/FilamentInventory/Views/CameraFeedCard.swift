@@ -12,6 +12,7 @@ final class MJPEGStreamer: NSObject, ObservableObject, URLSessionDataDelegate {
 
     private var streamSession: URLSession?
     private var buffer = Data()
+    private var pendingErrorRead = false  // true when we're reading a 503 JSON body
 
     deinit { stop() }
 
@@ -44,6 +45,7 @@ final class MJPEGStreamer: NSObject, ObservableObject, URLSessionDataDelegate {
             self.currentFrame = nil
         }
         buffer = Data()
+        pendingErrorRead = false
         streamSession?.dataTask(with: request).resume()
     }
 
@@ -76,11 +78,9 @@ final class MJPEGStreamer: NSObject, ObservableObject, URLSessionDataDelegate {
             }
             completionHandler(.cancel)
         case 503:
-            DispatchQueue.main.async {
-                self.isStreaming = false
-                self.errorMessage = "Camera unavailable — set PRINTER_IP & PRINTER_ACCESS_CODE in docker-compose.yml"
-            }
-            completionHandler(.cancel)
+            // Server now sends a JSON body explaining why ffmpeg failed — collect it
+            pendingErrorRead = true
+            completionHandler(.allow)
         default:
             DispatchQueue.main.async {
                 self.isStreaming = false
@@ -92,15 +92,25 @@ final class MJPEGStreamer: NSObject, ObservableObject, URLSessionDataDelegate {
 
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask,
                     didReceive data: Data) {
-        buffer.append(data)
-        extractFrames()
+        if pendingErrorRead {
+            buffer.append(data)   // accumulate 503 JSON body
+        } else {
+            buffer.append(data)
+            extractFrames()
+        }
     }
 
     func urlSession(_ session: URLSession, task: URLSessionTask,
                     didCompleteWithError error: Error?) {
         DispatchQueue.main.async {
             self.isStreaming = false
-            if let err = error as NSError?, err.code != NSURLErrorCancelled {
+            if self.pendingErrorRead {
+                // Parse the 503 JSON body for the server's specific error message
+                let msg = (try? JSONSerialization.jsonObject(with: self.buffer) as? [String: Any])
+                    .flatMap { $0["error"] as? String }
+                    ?? "Camera unavailable — check NAS logs for ffmpeg errors"
+                self.errorMessage = msg
+            } else if let err = error as NSError?, err.code != NSURLErrorCancelled {
                 self.errorMessage = err.localizedDescription
             } else if error == nil && self.currentFrame == nil {
                 self.errorMessage = "Camera offline — printer may be off or unreachable from NAS"

@@ -5,8 +5,8 @@ import SwiftUI
 struct Filament: Identifiable, Codable, Hashable {
     var id: String = UUID().uuidString
     var brand: String
-    var sku: String
-    var barcode: String
+    var sku: String = ""
+    var barcode: String = ""
     var type: FilamentType
     var color: FilamentColor
     var totalWeightG: Double        // original spool weight in grams

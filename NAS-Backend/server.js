@@ -387,13 +387,6 @@ app.get('/api/camera/stream', (req, res) => {
   }
 
   const boundary = 'mjpeg_frame';
-  res.writeHead(200, {
-    'Content-Type': `multipart/x-mixed-replace; boundary=${boundary}`,
-    'Cache-Control': 'no-cache, no-store, must-revalidate',
-    'Connection': 'keep-alive',
-    'Transfer-Encoding': 'chunked'
-  });
-
   const rtspUrl = `rtsps://bblp:${PRINTER_ACCESS_CODE}@${PRINTER_IP}:322/streaming/live/1`;
 
   const ffmpeg = spawn('ffmpeg', [
@@ -408,9 +401,24 @@ app.get('/api/camera/stream', (req, res) => {
     'pipe:1'
   ]);
 
+  // Delay sending 200 headers until the first JPEG frame arrives.
+  // If ffmpeg exits or errors before producing any frame, send 503 instead —
+  // this gives the iOS app a proper error rather than an empty-body 200.
+  let headersSent = false;
   let buffer = Buffer.alloc(0);
   const SOI = Buffer.from([0xFF, 0xD8]);
   const EOI = Buffer.from([0xFF, 0xD9]);
+
+  function sendStreamHeaders() {
+    if (headersSent) return;
+    headersSent = true;
+    res.writeHead(200, {
+      'Content-Type': `multipart/x-mixed-replace; boundary=${boundary}`,
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Connection': 'keep-alive',
+      'Transfer-Encoding': 'chunked'
+    });
+  }
 
   ffmpeg.stdout.on('data', (chunk) => {
     buffer = Buffer.concat([buffer, chunk]);
@@ -427,8 +435,9 @@ app.get('/api/camera/stream', (req, res) => {
       }
 
       const frame = buffer.slice(startIdx, endIdx + 2);
-      const header = `--${boundary}\r\nContent-Type: image/jpeg\r\nContent-Length: ${frame.length}\r\n\r\n`;
+      sendStreamHeaders();  // safe to call repeatedly — only acts on first call
 
+      const header = `--${boundary}\r\nContent-Type: image/jpeg\r\nContent-Length: ${frame.length}\r\n\r\n`;
       if (!res.writableEnded) {
         res.write(header);
         res.write(frame);
@@ -439,18 +448,33 @@ app.get('/api/camera/stream', (req, res) => {
     }
   });
 
+  let stderrLog = '';
   ffmpeg.stderr.on('data', (data) => {
-    console.error('[camera]', data.toString().trim());
+    const line = data.toString().trim();
+    console.error('[camera]', line);
+    stderrLog += line + '\n';
   });
 
   ffmpeg.on('close', (code) => {
     console.log(`[camera] ffmpeg exited (code ${code})`);
-    if (!res.writableEnded) res.end();
+    if (!headersSent) {
+      // ffmpeg failed before producing a single frame — return 503 so iOS shows a real error
+      const reason = code === 1
+        ? 'Cannot reach printer camera (port 322) — check printer IP and that port 322 is accessible from NAS'
+        : `Camera stream failed (ffmpeg exit ${code}) — check NAS logs`;
+      res.status(503).json({ error: reason });
+    } else if (!res.writableEnded) {
+      res.end();
+    }
   });
 
   ffmpeg.on('error', (err) => {
     console.error('[camera] ffmpeg spawn error:', err.message);
-    if (!res.writableEnded) res.end();
+    if (!headersSent) {
+      res.status(503).json({ error: 'ffmpeg not available in container — check NAS Docker logs' });
+    } else if (!res.writableEnded) {
+      res.end();
+    }
   });
 
   // Kill ffmpeg when the client disconnects

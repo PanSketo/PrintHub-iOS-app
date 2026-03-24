@@ -40,6 +40,26 @@ class NASService: ObservableObject {
         }
     }
 
+    // MARK: - Date Decoder
+    // Handles both ISO8601 without fractional seconds (iOS app) and with fractional
+    // seconds ("2024-01-15T10:30:00.000Z") — which JavaScript's Date.toISOString() produces
+    // and the MQTT bridge stores when it auto-logs print jobs and updates filaments.
+    private static func makeDateDecoder() -> JSONDecoder {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .custom { dec in
+            let container = try dec.singleValueContainer()
+            let str = try container.decode(String.self)
+            let plain = ISO8601DateFormatter()
+            if let d = plain.date(from: str) { return d }
+            let frac = ISO8601DateFormatter()
+            frac.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            if let d = frac.date(from: str) { return d }
+            throw DecodingError.dataCorruptedError(in: container,
+                debugDescription: "Cannot parse date: \(str)")
+        }
+        return decoder
+    }
+
     // MARK: - Auto Connect
     // Called on launch, foreground restore, and after saving new NAS settings.
     // Verifies connection then triggers a full data sync on success.
@@ -83,8 +103,7 @@ class NASService: ObservableObject {
         guard (response as? HTTPURLResponse)?.statusCode == 200 else {
             throw NASError.serverError
         }
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
+        let decoder = NASService.makeDateDecoder()
         return try decoder.decode([Filament].self, from: data)
     }
 
@@ -167,8 +186,7 @@ class NASService: ObservableObject {
         guard (response as? HTTPURLResponse)?.statusCode == 200 else {
             throw NASError.serverError
         }
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
+        let decoder = NASService.makeDateDecoder()
         return try decoder.decode([PrintJob].self, from: data)
     }
     // MARK: - Printer State
@@ -184,9 +202,7 @@ class NASService: ObservableObject {
             if statusCode == 401 { throw NASError.unauthorized }
             throw NASError.serverError
         }
-        let decoder = JSONDecoder()
-        // Note: all Codable types use explicit CodingKeys so no keyDecodingStrategy needed
-        decoder.dateDecodingStrategy = .iso8601
+        let decoder = NASService.makeDateDecoder()
         // Wrap in try? to get graceful nil instead of throw on partial decode failure
         if let state = try? decoder.decode(PrinterState.self, from: data) {
             return state
