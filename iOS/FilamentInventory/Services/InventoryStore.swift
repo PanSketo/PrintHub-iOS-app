@@ -95,6 +95,10 @@ class InventoryStore: ObservableObject {
                 if let mirrored = await nas.mirrorImage(remoteURL: currentURL) {
                     updated.imageURL = mirrored
                     changed = true
+                } else {
+                    // Mirror failed (broken URL or download error) — clear so next sync retries fresh
+                    updated.imageURL = nil
+                    changed = true
                 }
             }
 
