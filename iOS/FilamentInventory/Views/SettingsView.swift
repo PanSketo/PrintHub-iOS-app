@@ -348,7 +348,7 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("Settings")
-            .simultaneousGesture(TapGesture().onEnded { focusedField = nil })
+            .scrollDismissesKeyboard(.interactively)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     if focusedField != nil {
@@ -363,7 +363,7 @@ struct SettingsView: View {
                 apiKey = nasService.apiKey
                 lowStockThreshold = UserDefaults.standard.double(forKey: "low_stock_threshold").nonZero ?? 200
             }
-            .alert("Reset Settings?", isPresented: $showResetAlert) {
+            .alert("Reset All Settings?", isPresented: $showResetAlert) {
                 Button("Reset", role: .destructive) {
                     UserDefaults.standard.removeObject(forKey: "nas_base_url")
                     UserDefaults.standard.removeObject(forKey: "nas_api_key")
@@ -372,6 +372,8 @@ struct SettingsView: View {
                     apiKey = ""
                 }
                 Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This will clear your NAS URL, API key, and all connection settings. Your inventory data on the NAS will not be affected.")
             }
             .sheet(isPresented: $showCharts) {
                 NavigationView {
