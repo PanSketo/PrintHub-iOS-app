@@ -1,134 +1,175 @@
 # 🧵 Filament Inventory
 
-A personal iOS app to manage your 3D printer filament inventory, synced to your Synology NAS.
+A personal iOS app to manage your 3D printer filament inventory, synced to your Synology NAS. Built with SwiftUI, backed by a Node.js/SQLite server running in Docker.
+
+---
 
 ## Features
-- 📷 Barcode scanning via camera (auto-fills filament info from the web)
-- 🏷️ Track brand, SKU, type, colour, weight, and price
-- 📊 Dashboard with total spend, weight remaining, and low stock alerts
-- 🔍 Filter and search by brand, colour, type, or status
-- ⚖️ Weight management: manual entry, auto-deduct on print log, or full/partial/empty status
-- 🖨️ Print job logging with filament deduction and history
-- 💰 Cost tracking and spend analytics
-- 🔔 Push notifications when filament drops below 200g
-- 🌐 Synced to Synology NAS via REST API + SQLite
+
+### Inventory Management
+- 📷 **Barcode scanning** — camera-based scan auto-fills brand, SKU, colour, and image from the web
+- 🏷️ **Full spool tracking** — brand, SKU, type (PLA/PETG/ABS/TPU/ASA/PA/PC/…), colour, weight, price, notes
+- 🎨 **Colour picker** — preset swatches + full iOS colour wheel with hex code display
+- 🔍 **Filter & search** — by brand, colour, type, or stock status (In Stock / Low / Empty)
+- 🖼️ **Spool images** — auto-fetched from the web and mirrored to your NAS for offline use
+- 🏭 **Brand logos** — automatically fetched and cached
+- 📦 **Restock detection** — scanning or entering a duplicate SKU/barcode prompts a restock instead of a duplicate
+
+### Weight & Cost Tracking
+- ⚖️ **Two-option weight update** on every spool:
+  - *Enter grams manually* — type the exact remaining weight
+  - *Measure spool gap* — measure the gap (cm) from the spool's outer rim to the filament surface; the app estimates remaining weight using standard 200 mm spool geometry
+- 💰 **Cost per print job** — automatically calculated from filament price per gram × grams used
+- 📈 **Price history** — log and chart price changes per filament over time
+- 💸 **Spend analytics** — total spend, cost per gram, cost per print
+
+### Print Logging
+- 🖨️ **Log print jobs** — name, duration, grams used, success/fail flag
+- 🔢 **Auto-deduction** — remaining weight updated automatically on save
+- 📋 **Print history per spool** — full job list with weight and cost per job
+- 🧮 **Global print log** — all jobs across all spools in one view
+
+### Dashboard & Analytics
+- 📊 **Customisable dashboard** — drag-to-reorder cards; show/hide sections
+- 📉 **Statistics & Charts** — filament type breakdown (donut chart), spend by brand, price trends
+- 🛒 **Shopping list** — auto-generated from low-stock spools
+- 📷 **Live camera feed** — MJPEG stream card (for webcam/printer cam monitoring)
+
+### Multi-Printer Support
+- 🖨️ **Multiple printer profiles** — each printer has its own name, NAS URL, and API key
+- ✅ **Active printer switching** — tap a printer in Settings to set it as active
+- 🔌 **Printer state monitoring** — live status from Bambu Lab printers via MQTT bridge
+- 🗂️ **AMS slot mapping** — map each AMS filament slot to a spool in your inventory
+
+### Backup & Sync
+- 📤 **Export inventory** — saves a full JSON backup (filaments + print jobs) via the iOS share sheet
+- 📥 **Import backup** — restore from any previously exported JSON file
+- 🔄 **NAS sync** — all data is live-synced to your Synology NAS over REST API
+- ⚡ **Force sync** — manual pull from NAS in Settings
+
+### Siri & Shortcuts
+- 🎙️ **App Intents** — Siri Shortcuts integration for quick inventory actions
+
+### Settings & UI
+- 🌗 **Appearance themes** — System / Light / Dark mode
+- 🔔 **Configurable low-stock threshold** — slider from 50 g to 500 g (default 200 g)
+- 🔔 **Push notifications** — alert when any spool drops below the threshold
+- 🪟 **Liquid Glass UI** — adaptive glass morphism style (iOS 26 native, graceful fallback on iOS 16–25)
+- ⌨️ **Keyboard UX** — scroll to dismiss keyboard; all form buttons respond on first tap
 
 ---
 
 ## Project Structure
 
 ```
-FilamentInventory/
-├── iOS/                          ← Swift/SwiftUI Xcode project
-│   ├── FilamentInventory.xcodeproj/
+fil-inv/
+├── iOS/
 │   └── FilamentInventory/
 │       ├── FilamentInventoryApp.swift
 │       ├── ContentView.swift
-│       ├── Info.plist
-│       ├── Assets.xcassets/
 │       ├── Models/
-│       │   └── FilamentModel.swift
+│       │   └── FilamentModel.swift          # Filament, PrintJob, PrinterConfig, etc.
 │       ├── Services/
-│       │   ├── NASService.swift
-│       │   ├── InventoryStore.swift
-│       │   ├── FilamentLookupService.swift
-│       │   └── NotificationManager.swift
+│       │   ├── NASService.swift             # REST API client + image mirroring
+│       │   ├── InventoryStore.swift         # Central ObservableObject state store
+│       │   ├── PrinterManager.swift         # Multi-printer config management
+│       │   ├── FilamentLookupService.swift  # Barcode / image / logo lookup
+│       │   ├── CloudBackupService.swift     # JSON export & import
+│       │   └── NotificationManager.swift   # Push notification scheduling
+│       ├── Intents/
+│       │   └── FilamentIntents.swift        # Siri Shortcuts / App Intents
 │       └── Views/
-│           ├── DashboardView.swift
-│           ├── InventoryListView.swift
-│           ├── AddFilamentView.swift
-│           ├── BarcodeScannerView.swift
-│           ├── FilamentDetailView.swift
-│           ├── LogPrintView.swift
-│           ├── PrintLogView.swift
-│           └── SettingsView.swift
-├── NAS-Backend/                  ← Node.js backend for Synology
-│   ├── server.js
+│           ├── DashboardView.swift          # Customisable home dashboard
+│           ├── DashboardCustomizeSheet.swift
+│           ├── InventoryListView.swift      # Grid/list with filters
+│           ├── AddFilamentView.swift        # Add spool (barcode or manual)
+│           ├── FilamentDetailView.swift     # Spool detail + weight update + history
+│           ├── LogPrintView.swift           # Log a print job
+│           ├── PrintLogView.swift           # Global print job history
+│           ├── RestockView.swift            # Restock an existing spool
+│           ├── ChartsView.swift             # Statistics & charts
+│           ├── ShoppingListView.swift       # Auto shopping list
+│           ├── PriceHistoryView.swift       # Price trend per filament
+│           ├── PrinterView.swift            # Printer status + AMS mapping
+│           ├── CameraFeedCard.swift         # Live MJPEG camera stream
+│           ├── BarcodeScannerView.swift     # AVFoundation camera scanner
+│           ├── SettingsView.swift           # NAS config, printers, backup, theme
+│           └── GlassStyle.swift            # Liquid glass / card styling
+├── NAS-Backend/
+│   ├── server.js                           # Express REST API + SQLite
 │   ├── package.json
-│   └── docker-compose.yml
-├── .github/workflows/
-│   └── build-ipa.yml             ← GitHub Actions build (free)
-├── codemagic.yaml                ← Codemagic CI/CD build (alternative)
-└── .gitignore
+│   ├── docker-compose.yml
+│   └── mqtt-bridge/
+│       ├── bridge.js                       # Bambu Lab MQTT → NAS bridge
+│       └── package.json
+├── codemagic.yaml                          # Codemagic CI/CD build
+└── .github/workflows/
+    └── build-ipa.yml                       # GitHub Actions IPA build (free)
 ```
 
 ---
 
-## Step 1 — Deploy Backend on Synology NAS
+## Step 1 — Deploy the Backend on Synology NAS
 
 ### Prerequisites
-- Synology NAS with **Container Manager** (or Docker) installed
-- Port 3456 open on your router (forward to REDACTED-PRINTER-IP0:3456)
+- Synology NAS with **Container Manager** (Docker) installed
+- Port **3456** forwarded on your router → `REDACTED-PRINTER-IP0:3456`
 
 ### Steps
 
 1. **Copy the backend to your NAS**
-   - Open File Station on your Synology
-   - Create folder: `/docker/filament-backend`
+   - Open **File Station** → create `/docker/filament-backend`
    - Upload everything from `NAS-Backend/` into that folder
 
 2. **Set your API key**
    - Edit `docker-compose.yml`
-   - Change `your-super-secret-api-key-change-this` to a strong random string
+   - Replace `your-super-secret-api-key-change-this` with a strong random string
    - Example: `FilInv-a8f3kd92-xP9mQ7nL4wR1`
-   - **Save this key — you'll enter it in the app later**
+   - **Save this key — you'll enter it in the app**
 
-3. **Start the container**
-   - Open **Container Manager** → **Project** → **Create**
-   - Set the path to `/docker/filament-backend`
-   - Click **Build** → **Deploy**
-   - The API starts automatically on port 3456
+3. **Start the container** (via SSH)
+   ```bash
+   cd /volume2/docker/filament-backend
+   sudo docker compose up -d
+   sudo docker compose logs --tail=30
+   ```
+   Or via **Container Manager** → **Project** → **Create** → set path → **Deploy**
 
 4. **Verify it works**
-   - Open a browser on any device on your network
-   - Visit: `http://REDACTED-PRINTER-IP0:3456/api/health`
-   - You should see: `{"status":"ok","version":"1.0.0",...}`
+   ```
+   http://REDACTED-PRINTER-IP0:3456/api/health
+   → {"status":"ok","version":"1.0.0",...}
+   ```
 
-5. **Port forwarding for remote access**
-   - In your router admin panel, add a port forward rule:
-     - External port: 3456 → Internal IP: REDACTED-PRINTER-IP0 → Internal port: 3456
-   - Test from outside: `http://REDACTED-DDNS:3456/api/health`
+5. **Remote access (optional)**
+   - Router: forward external port `3456` → `REDACTED-PRINTER-IP0:3456`
+   - Test: `http://REDACTED-DDNS:3456/api/health`
+
+### Updating the backend
+```bash
+cd /volume2/docker/filament-backend
+git pull origin main
+sudo docker compose down && sudo docker compose up -d
+sudo docker compose logs --tail=30
+```
 
 ---
 
 ## Step 2 — Build the iOS App (No Mac needed)
 
-### Option A: GitHub Actions (FREE — Recommended)
+### Option A: GitHub Actions — FREE ✅ (Recommended)
 
-1. **Create a private GitHub repository**
-   - Go to github.com → New Repository → Private
-   - Name it `filament-inventory`
+1. Push this repo to a **private** GitHub repository
+2. Go to **Actions** tab → **"Build Filament Inventory IPA"** → **Run workflow**
+3. Wait ~15 minutes ☕
+4. Download the `.ipa` from **Artifacts** when the build turns green ✅
 
-2. **Push this entire project to GitHub**
-   ```
-   # On your Windows PC, install Git from git-scm.com
-   # Open PowerShell in the FilamentInventory folder, then:
-
-   git init
-   git add .
-   git commit -m "Initial commit"
-   git branch -M main
-   git remote add origin https://github.com/YOUR_USERNAME/filament-inventory.git
-   git push -u origin main
-   ```
-
-3. **Trigger the build**
-   - Go to your repo on GitHub → **Actions** tab
-   - You'll see **"Build Filament Inventory IPA"** workflow
-   - Click **Run workflow** → **Run workflow**
-   - Wait ~15 minutes for it to complete ☕
-
-4. **Download your IPA**
-   - When the build turns green ✅, click on it
-   - Scroll down to **Artifacts**
-   - Click **FilamentInventory-v1.0-build1** to download the `.ipa` file
-
-### Option B: Codemagic.io (Alternative, also free tier)
+### Option B: Codemagic.io (free tier)
 
 1. Sign up at [codemagic.io](https://codemagic.io) with your GitHub account
-2. Click **Add application** → connect your GitHub repo
-3. Codemagic will detect the `codemagic.yaml` automatically
-4. Click **Start build** → download the `.ipa` when done
+2. **Add application** → connect your repo
+3. Codemagic detects `codemagic.yaml` automatically
+4. **Start build** → download `.ipa` when done
 
 ---
 
@@ -136,21 +177,22 @@ FilamentInventory/
 
 1. Open **Signulous** on your iPhone (or their website)
 2. Upload the `FilamentInventory.ipa` you downloaded
-3. Signulous will sign it with your certificate
-4. Install it on your iPhone — done! 🎉
+3. Signulous signs it with your certificate
+4. Install on your iPhone — done! 🎉
 
 ---
 
 ## Step 4 — First Launch Setup
 
 1. Open **Filament Inventory** on your iPhone
-2. The NAS Setup screen will appear
+2. The NAS Setup screen will appear automatically
 3. Enter:
-   - **NAS URL:** `http://REDACTED-DDNS:3456`  
-     *(or `http://REDACTED-PRINTER-IP0:3456` when on home Wi-Fi)*
+   - **NAS URL:** `http://REDACTED-DDNS:3456` *(remote)* or `http://REDACTED-PRINTER-IP0:3456` *(home Wi-Fi)*
    - **API Key:** the key you set in `docker-compose.yml`
-4. Tap **Test Connection** — wait for the green ✅
+4. Tap **Test Connection** → wait for ✅
 5. Tap **Continue** — you're in!
+
+> You can add additional printers later in **Settings → Printers → Add Printer**, each with its own NAS URL and API key.
 
 ---
 
@@ -165,35 +207,49 @@ FilamentInventory/
 | PUT | `/api/filaments/:id` | Update filament |
 | DELETE | `/api/filaments/:id` | Delete filament |
 | GET | `/api/printjobs` | Get all print jobs |
+| GET | `/api/printjobs/filament/:id` | Get jobs for one filament |
 | POST | `/api/printjobs` | Log a print job |
-| GET | `/api/stats` | Get inventory stats |
+| GET | `/api/stats` | Inventory stats |
+| GET | `/api/ams-mappings` | Get AMS slot mappings |
+| PUT | `/api/ams-mappings/:slot` | Update AMS slot mapping |
+| GET | `/api/printer-state` | Get cached printer state |
+| POST | `/api/printer-state` | Update printer state (MQTT bridge) |
+| POST | `/api/images/mirror` | Mirror a remote image to NAS storage |
 
 ---
 
 ## Troubleshooting
 
 **"Cannot connect to NAS"**
-- Make sure the Docker container is running in Container Manager
-- Check port 3456 is not blocked by Synology firewall
-- Try the local IP first: `http://REDACTED-PRINTER-IP0:3456/api/health`
+- Confirm the container is running: `sudo docker compose ps`
+- Try the local URL first: `http://REDACTED-PRINTER-IP0:3456/api/health`
+- Check port 3456 is not blocked by Synology Firewall (Control Panel → Security → Firewall)
+
+**"Permission denied" running docker commands on NAS**
+- Prefix with `sudo`: `sudo docker compose down && sudo docker compose up -d`
 
 **"Barcode scan not working"**
-- Go to iPhone Settings → Filament Inventory → Camera → Allow
+- iPhone Settings → Filament Inventory → Camera → Allow
 
-**"No notifications"**  
-- Go to iPhone Settings → Filament Inventory → Notifications → Allow All
+**"No push notifications"**
+- iPhone Settings → Filament Inventory → Notifications → Allow All
 
-**Build failed on GitHub Actions**
-- Check the Actions log for errors
-- Most common: wrong Xcode version. Edit `.github/workflows/build-ipa.yml` and change `Xcode_15.4` to the latest available
+**"Build failed on GitHub Actions"**
+- Check the Actions log for the exact error
+- Most common: Xcode version mismatch — edit `.github/workflows/build-ipa.yml` and update the Xcode version to the latest available on the runner
 
 ---
 
 ## Tech Stack
 
-- **iOS:** Swift 5.9 + SwiftUI + AVFoundation
-- **Min iOS:** 16.0
-- **Backend:** Node.js + Express + better-sqlite3
-- **Database:** SQLite (stored in Docker volume on NAS)
-- **Barcode lookup:** UPC Item DB API + Open Food Facts
-- **Brand logos:** Clearbit Logo API
+| Layer | Technology |
+|-------|-----------|
+| iOS app | Swift 5.9 + SwiftUI + AVFoundation + App Intents |
+| Min iOS | 16.0 (Liquid Glass UI on iOS 26+) |
+| Backend | Node.js + Express + better-sqlite3 |
+| Database | SQLite (Docker volume on NAS) |
+| MQTT bridge | Node.js (Bambu Lab printer telemetry) |
+| Barcode lookup | UPC Item DB + Open Food Facts |
+| Image search | Web scraping via FilamentLookupService |
+| Brand logos | Clearbit Logo API |
+| CI/CD | GitHub Actions + Codemagic |
