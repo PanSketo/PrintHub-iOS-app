@@ -227,7 +227,25 @@ struct WeightManagementCard: View {
     @EnvironmentObject var store: InventoryStore
     @Binding var filament: Filament
     @State private var manualWeight: String = ""
+    @State private var distanceCm: String = ""
+    @State private var showOptions = false
     @State private var isEditing = false
+    @State private var isMeasuring = false
+
+    // Standard 200 mm spool geometry (common for 1 kg spools)
+    private let spoolOuterRadius: Double = 9.2  // cm — inner winding area of flange
+    private let spoolHubRadius: Double   = 2.5  // cm — centre hub / core
+
+    /// Estimated remaining grams from gap measurement
+    var estimatedGrams: Double? {
+        guard let d = Double(distanceCm.replacingOccurrences(of: ",", with: ".")),
+              d >= 0 else { return nil }
+        let r = spoolOuterRadius - d
+        guard r > spoolHubRadius else { return 0 }
+        let ratio = (r * r - spoolHubRadius * spoolHubRadius) /
+                    (spoolOuterRadius * spoolOuterRadius - spoolHubRadius * spoolHubRadius)
+        return min(filament.totalWeightG, max(0, filament.totalWeightG * ratio))
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -271,8 +289,36 @@ struct WeightManagementCard: View {
                 Spacer()
             }
 
-            // Manual weight update
-            if isEditing {
+            // Update options
+            if showOptions {
+                VStack(spacing: 10) {
+                    Button {
+                        manualWeight = String(Int(filament.remainingWeightG))
+                        showOptions = false
+                        isEditing = true
+                    } label: {
+                        Label("Enter Grams Manually", systemImage: "keyboard")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+
+                    Button {
+                        distanceCm = ""
+                        showOptions = false
+                        isMeasuring = true
+                    } label: {
+                        Label("Measure Spool Gap", systemImage: "ruler")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+
+                    Button("Cancel") { showOptions = false }
+                        .foregroundColor(.secondary)
+                        .font(.subheadline)
+                        .frame(maxWidth: .infinity)
+                }
+
+            } else if isEditing {
                 HStack {
                     TextField("Enter weight in grams", text: $manualWeight)
                         .keyboardType(.numberPad)
@@ -288,10 +334,53 @@ struct WeightManagementCard: View {
                     .buttonStyle(.borderedProminent)
                     .tint(.orange)
                 }
+                Button("Cancel") { isEditing = false }
+                    .foregroundColor(.secondary)
+                    .font(.subheadline)
+                    .frame(maxWidth: .infinity)
+
+            } else if isMeasuring {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Measure the gap (in cm) from the outer rim of the spool down to the top of the filament.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    HStack(spacing: 8) {
+                        TextField("e.g. 3.5", text: $distanceCm)
+                            .keyboardType(.decimalPad)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                        Text("cm")
+                            .foregroundColor(.secondary)
+                            .fontWeight(.medium)
+                    }
+                    if let est = estimatedGrams {
+                        HStack(spacing: 6) {
+                            Image(systemName: "scalemass")
+                                .foregroundColor(.orange)
+                            Text("Estimated: ~\(Int(est))g remaining")
+                                .fontWeight(.semibold)
+                        }
+                        .font(.subheadline)
+                        .padding(.top, 2)
+
+                        Button("Save ~\(Int(est))g") {
+                            filament.remainingWeightG = est
+                            filament.stockStatus = StockStatus.from(remaining: filament.remainingWeightG, total: filament.totalWeightG)
+                            store.updateFilament(filament)
+                            isMeasuring = false
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.orange)
+                        .frame(maxWidth: .infinity)
+                    }
+                    Button("Cancel") { isMeasuring = false }
+                        .foregroundColor(.secondary)
+                        .font(.subheadline)
+                        .frame(maxWidth: .infinity)
+                }
+
             } else {
                 Button("Update Remaining Weight") {
-                    manualWeight = String(Int(filament.remainingWeightG))
-                    isEditing = true
+                    showOptions = true
                 }
                 .buttonStyle(.bordered)
                 .frame(maxWidth: .infinity)
