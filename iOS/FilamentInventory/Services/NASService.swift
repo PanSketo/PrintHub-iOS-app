@@ -179,7 +179,9 @@ class NASService: ObservableObject {
         var request = URLRequest(url: url)
         request.addValue(apiKey, forHTTPHeaderField: "X-API-Key")
         let (data, response) = try await session.data(for: request)
-        guard (response as? HTTPURLResponse)?.statusCode == 200 else {
+        let statusCode = (response as? HTTPURLResponse)?.statusCode ?? 0
+        guard statusCode == 200 else {
+            if statusCode == 401 { throw NASError.unauthorized }
             throw NASError.serverError
         }
         let decoder = JSONDecoder()
@@ -268,6 +270,7 @@ enum NASError: LocalizedError {
     case serverError
     case notConfigured
     case decodingError
+    case unauthorized
 
     var errorDescription: String? {
         switch self {
@@ -275,6 +278,7 @@ enum NASError: LocalizedError {
         case .serverError: return "NAS server returned an error"
         case .notConfigured: return "NAS is not configured"
         case .decodingError: return "Failed to decode response"
+        case .unauthorized: return "API key incorrect — update Settings"
         }
     }
 }
