@@ -28,7 +28,12 @@
 		B6C08DB51CB9A9D5881C0DEF /* RestockView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5800C33B524B693C848AB7A7 /* RestockView.swift */; };
 		8CEA8B5C5547BB4023EA91DF /* PrinterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09C840D46790EF0AC05C14F5 /* PrinterView.swift */; };
 		F4A2C1D3E5B6784901234567 /* CameraFeedCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9B8C7D6E5F4321098765432 /* CameraFeedCard.swift */; };
+		7ABF4DC898A28448828D4932 /* DashboardCustomizeSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DCE6B7A50664C0BCE4B8321 /* DashboardCustomizeSheet.swift */; };
+		DBCAEEA75CD1232B9E0E69D5 /* GlassStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE73977386F1A781A97060C8 /* GlassStyle.swift */; };
 		76799C555F79C18C47A7AE65 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3EC4EA09CED15A71400F27B6 /* Assets.xcassets */; };
+		AA11BB22CC33DD44EE55FF01 /* PrinterManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB11CC22DD33EE44FF550011 /* PrinterManager.swift */; };
+		CC11DD22EE33FF44AA550022 /* CloudBackupService.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD11EE22FF33AA44BB550022 /* CloudBackupService.swift */; };
+		EE11FF22AA33BB44CC550033 /* FilamentIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF11AA22BB33CC44DD550033 /* FilamentIntents.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -54,7 +59,12 @@
 		5800C33B524B693C848AB7A7 /* RestockView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RestockView.swift; sourceTree = "<group>"; };
 		09C840D46790EF0AC05C14F5 /* PrinterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrinterView.swift; sourceTree = "<group>"; };
 		A9B8C7D6E5F4321098765432 /* CameraFeedCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraFeedCard.swift; sourceTree = "<group>"; };
+		8DCE6B7A50664C0BCE4B8321 /* DashboardCustomizeSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardCustomizeSheet.swift; sourceTree = "<group>"; };
+		CE73977386F1A781A97060C8 /* GlassStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassStyle.swift; sourceTree = "<group>"; };
 		3EC4EA09CED15A71400F27B6 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		BB11CC22DD33EE44FF550011 /* PrinterManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrinterManager.swift; sourceTree = "<group>"; };
+		DD11EE22FF33AA44BB550022 /* CloudBackupService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudBackupService.swift; sourceTree = "<group>"; };
+		FF11AA22BB33CC44DD550033 /* FilamentIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilamentIntents.swift; sourceTree = "<group>"; };
 		620567A71E5CA3AB8765C812 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -93,6 +103,7 @@
 				CBB4F851827C6EE4F9480055 /* Models */,
 				3440B5085CAE9E78576D6B19 /* Services */,
 				21C9D9E9162B48E6E37C8FA0 /* Views */,
+				A1B2C3D4E5F600001234ABCD /* Intents */,
 				3EC4EA09CED15A71400F27B6 /* Assets.xcassets */,
 				620567A71E5CA3AB8765C812 /* Info.plist */,
 			);
@@ -114,8 +125,18 @@
 				74317758A8B9AB3E5B097F8A /* InventoryStore.swift */,
 				709F4924EDD1B6593CE9C8C1 /* FilamentLookupService.swift */,
 				C3F34FAB5D6735F672A69CC3 /* NotificationManager.swift */,
+				BB11CC22DD33EE44FF550011 /* PrinterManager.swift */,
+				DD11EE22FF33AA44BB550022 /* CloudBackupService.swift */,
 			);
 			path = Services;
+			sourceTree = "<group>";
+		};
+		A1B2C3D4E5F600001234ABCD /* Intents */ = {
+			isa = PBXGroup;
+			children = (
+				FF11AA22BB33CC44DD550033 /* FilamentIntents.swift */,
+			);
+			path = Intents;
 			sourceTree = "<group>";
 		};
 		21C9D9E9162B48E6E37C8FA0 /* Views */ = {
@@ -135,6 +156,8 @@
 				5800C33B524B693C848AB7A7 /* RestockView.swift */,
 				09C840D46790EF0AC05C14F5 /* PrinterView.swift */,
 				A9B8C7D6E5F4321098765432 /* CameraFeedCard.swift */,
+				8DCE6B7A50664C0BCE4B8321 /* DashboardCustomizeSheet.swift */,
+				CE73977386F1A781A97060C8 /* GlassStyle.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -229,6 +252,11 @@
 				B6C08DB51CB9A9D5881C0DEF /* RestockView.swift in Sources */,
 				8CEA8B5C5547BB4023EA91DF /* PrinterView.swift in Sources */,
 				F4A2C1D3E5B6784901234567 /* CameraFeedCard.swift in Sources */,
+				7ABF4DC898A28448828D4932 /* DashboardCustomizeSheet.swift in Sources */,
+				DBCAEEA75CD1232B9E0E69D5 /* GlassStyle.swift in Sources */,
+				AA11BB22CC33DD44EE55FF01 /* PrinterManager.swift in Sources */,
+				CC11DD22EE33FF44AA550022 /* CloudBackupService.swift in Sources */,
+				EE11FF22AA33BB44CC550033 /* FilamentIntents.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

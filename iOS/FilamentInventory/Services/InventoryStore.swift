@@ -188,16 +188,25 @@ class InventoryStore: ObservableObject {
     func logPrintJob(_ job: PrintJob) {
         Task {
             do {
-                try await nas.addPrintJob(job)
+                // Stamp the cost at log time (price per gram × grams used)
+                let costEUR: Double? = await MainActor.run {
+                    guard let filament = self.filaments.first(where: { $0.id == job.filamentId }),
+                          filament.totalWeightG > 0 else { return nil }
+                    return (filament.pricePaid / filament.totalWeightG) * job.weightUsedG
+                }
+                var jobWithCost = job
+                jobWithCost.costEUR = costEUR
+
+                try await nas.addPrintJob(jobWithCost)
                 // Capture the updated filament inside MainActor, then persist outside
                 let updatedFilament: Filament? = await MainActor.run {
-                    self.printJobs.append(job)
-                    guard let idx = self.filaments.firstIndex(where: { $0.id == job.filamentId }) else { return nil }
+                    self.printJobs.append(jobWithCost)
+                    guard let idx = self.filaments.firstIndex(where: { $0.id == jobWithCost.filamentId }) else { return nil }
                     var updated = self.filaments[idx]
-                    updated.remainingWeightG = max(0, updated.remainingWeightG - job.weightUsedG)
+                    updated.remainingWeightG = max(0, updated.remainingWeightG - jobWithCost.weightUsedG)
                     updated.stockStatus = StockStatus.from(remaining: updated.remainingWeightG, total: updated.totalWeightG)
                     updated.lastUpdated = Date()
-                    updated.printJobs.append(job)
+                    updated.printJobs.append(jobWithCost)
                     self.filaments[idx] = updated
                     self.saveToLocalCache()
                     NotificationManager.shared.scheduleAlertIfNeeded(for: updated)
@@ -206,6 +215,11 @@ class InventoryStore: ObservableObject {
                 // Persist to NAS using the captured value — no race condition
                 if let filament = updatedFilament {
                     try await nas.saveFilament(filament)
+                }
+                // Trigger iCloud backup after every logged print
+                Task {
+                    let (f, j) = await MainActor.run { (self.filaments, self.printJobs) }
+                    await CloudBackupService.shared.backup(filaments: f, jobs: j)
                 }
             } catch {
                 await MainActor.run { self.errorMessage = error.localizedDescription }

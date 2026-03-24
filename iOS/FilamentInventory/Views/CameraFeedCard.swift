@@ -159,8 +159,7 @@ struct CameraFeedCard: View {
             feedArea
             controlBar
         }
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(16)
+        .glassCard()
         .onAppear { streamer.start(baseURL: nasService.baseURL, apiKey: nasService.apiKey) }
         .onDisappear { streamer.stop() }
         .onChange(of: nasService.isConnected) { connected in

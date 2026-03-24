@@ -59,6 +59,18 @@ struct LogPrintView: View {
                                 .fontWeight(.semibold)
                                 .foregroundColor(filament.remainingWeightG - weightUsed < 200 ? .orange : .secondary)
                         }
+                        if filament.totalWeightG > 0 && filament.pricePaid > 0 {
+                            HStack {
+                                Text("Estimated cost:")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                Spacer()
+                                Text(String(format: "€%.3f", (filament.pricePaid / filament.totalWeightG) * weightUsed))
+                                    .font(.caption)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(.blue)
+                            }
+                        }
                     }
                 } header: {
                     Text("Filament Used")

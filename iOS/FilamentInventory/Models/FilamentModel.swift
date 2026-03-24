@@ -171,10 +171,21 @@ struct PrintJob: Identifiable, Codable, Hashable {
     var date: Date
     var notes: String = ""
     var success: Bool = true
+    var costEUR: Double? = nil      // computed at log time from filament price/gram
 
     enum CodingKeys: String, CodingKey {
-        case id, filamentId, printName, weightUsedG, duration, date, notes, success
+        case id, filamentId, printName, weightUsedG, duration, date, notes, success, costEUR
     }
+}
+
+// MARK: - Printer Configuration
+// Each entry represents a separate printer backend (NAS + mqtt-bridge combo).
+struct PrinterConfig: Identifiable, Codable {
+    var id: String = UUID().uuidString
+    var name: String        // user-visible name, e.g. "Bambu P2S"
+    var nasURL: String      // base URL of the NAS bridge for this printer
+    var apiKey: String      // API key for this printer's NAS
+    var notes: String = ""
 }
 
 // MARK: - Resilient Codable decoders
@@ -237,6 +248,7 @@ extension PrintJob {
         notes       = (try? c.decodeIfPresent(String.self,      forKey: .notes))   ?? ""
         success     = (try? c.decodeIfPresent(Bool.self,        forKey: .success)) ?? true
         duration    = try? c.decodeIfPresent(TimeInterval.self, forKey: .duration)
+        costEUR     = try? c.decodeIfPresent(Double.self,       forKey: .costEUR)
     }
 }
 

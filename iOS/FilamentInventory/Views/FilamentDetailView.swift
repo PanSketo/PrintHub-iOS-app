@@ -194,8 +194,7 @@ struct PrintSpecCard: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(16)
+        .glassCard()
         .padding(.horizontal)
     }
 }
@@ -219,8 +218,7 @@ struct SpecItem: View {
         }
         .frame(maxWidth: .infinity)
         .padding(10)
-        .background(Color(.tertiarySystemBackground))
-        .cornerRadius(12)
+        .glassInnerCard()
     }
 }
 
@@ -300,8 +298,7 @@ struct WeightManagementCard: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(16)
+        .glassCard()
         .padding(.horizontal)
     }
 }
@@ -325,15 +322,20 @@ struct PrintHistoryCard: View {
                             .font(.caption).foregroundColor(.secondary)
                     }
                     Spacer()
-                    Text("\(Int(job.weightUsedG))g")
-                        .font(.subheadline).fontWeight(.bold)
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text("\(Int(job.weightUsedG))g")
+                            .font(.subheadline).fontWeight(.bold)
+                        if let cost = job.costEUR {
+                            Text(String(format: "€%.3f", cost))
+                                .font(.caption2).foregroundColor(.secondary)
+                        }
+                    }
                 }
                 Divider()
             }
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(16)
+        .glassCard()
         .padding(.horizontal)
     }
 }
@@ -375,8 +377,7 @@ struct CostInfoCard: View {
             .frame(maxWidth: .infinity)
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(16)
+        .glassCard()
         .padding(.horizontal)
     }
 }
@@ -395,8 +396,7 @@ struct NotesCard: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(16)
+        .glassCard()
         .padding(.horizontal)
     }
 }
