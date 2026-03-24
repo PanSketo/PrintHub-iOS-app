@@ -9,6 +9,51 @@ class NotificationManager: ObservableObject {
         center.requestAuthorization(options: [.alert, .badge, .sound]) { _, _ in }
     }
 
+    // MARK: - Print Job Notifications
+
+    func notifyPrintStarted(printName: String) {
+        let content = UNMutableNotificationContent()
+        content.title = "Print Started"
+        content.body = printName.isEmpty ? "A new print job has started." : "\"\(printName)\" has started."
+        content.sound = .default
+        let request = UNNotificationRequest(
+            identifier: "print_started_\(UUID().uuidString)",
+            content: content,
+            trigger: UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
+        )
+        center.add(request)
+    }
+
+    func notifyPrintCompleted(printName: String) {
+        let content = UNMutableNotificationContent()
+        content.title = "Print Complete"
+        content.body = printName.isEmpty ? "Your print finished successfully!" : "\"\(printName)\" finished successfully!"
+        content.sound = .default
+        let request = UNNotificationRequest(
+            identifier: "print_completed_\(UUID().uuidString)",
+            content: content,
+            trigger: UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
+        )
+        center.add(request)
+    }
+
+    func notifyPrintFailed(printName: String, reason: String?) {
+        let content = UNMutableNotificationContent()
+        content.title = "Print Failed"
+        var body = printName.isEmpty ? "A print job has failed." : "\"\(printName)\" has failed."
+        if let reason { body += " (\(reason))" }
+        content.body = body
+        content.sound = .defaultCritical
+        let request = UNNotificationRequest(
+            identifier: "print_failed_\(UUID().uuidString)",
+            content: content,
+            trigger: UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
+        )
+        center.add(request)
+    }
+
+    // MARK: - Low Stock Notifications
+
     func scheduleAlertIfNeeded(for filament: Filament) {
         guard filament.isLowStock || filament.isEmpty else { return }
         let content = UNMutableNotificationContent()

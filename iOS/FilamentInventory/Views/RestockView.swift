@@ -138,8 +138,7 @@ struct RestockView: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(16)
+        .glassCard()
         .padding(.horizontal)
     }
 
@@ -201,8 +200,7 @@ struct RestockView: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(16)
+        .glassCard()
         .padding(.horizontal)
     }
 
@@ -267,8 +265,7 @@ struct RestockView: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(16)
+        .glassCard()
         .padding(.horizontal)
     }
 
@@ -286,8 +283,7 @@ struct RestockView: View {
             )
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(16)
+        .glassCard()
         .padding(.horizontal)
     }
 
@@ -301,8 +297,7 @@ struct RestockView: View {
                 .focused($focusedField, equals: .notes)
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(16)
+        .glassCard()
         .padding(.horizontal)
     }
 

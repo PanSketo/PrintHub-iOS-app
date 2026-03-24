@@ -194,8 +194,7 @@ struct PrintSpecCard: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(16)
+        .glassCard()
         .padding(.horizontal)
     }
 }
@@ -219,8 +218,7 @@ struct SpecItem: View {
         }
         .frame(maxWidth: .infinity)
         .padding(10)
-        .background(Color(.tertiarySystemBackground))
-        .cornerRadius(12)
+        .glassInnerCard()
     }
 }
 
@@ -300,8 +298,7 @@ struct WeightManagementCard: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(16)
+        .glassCard()
         .padding(.horizontal)
     }
 }
@@ -332,8 +329,7 @@ struct PrintHistoryCard: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(16)
+        .glassCard()
         .padding(.horizontal)
     }
 }
@@ -375,8 +371,7 @@ struct CostInfoCard: View {
             .frame(maxWidth: .infinity)
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(16)
+        .glassCard()
         .padding(.horizontal)
     }
 }
@@ -395,8 +390,7 @@ struct NotesCard: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(16)
+        .glassCard()
         .padding(.horizontal)
     }
 }

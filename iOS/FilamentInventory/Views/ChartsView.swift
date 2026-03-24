@@ -88,8 +88,7 @@ struct SpendChartCard: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(16)
+        .glassCard()
     }
 }
 
@@ -145,8 +144,7 @@ struct TypeDonutCard: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(16)
+        .glassCard()
     }
 
     func typeColor(_ type: FilamentType) -> Color {
@@ -275,8 +273,7 @@ struct ColourBarCard: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(16)
+        .glassCard()
     }
 }
 
@@ -345,7 +342,6 @@ struct WeightSummaryCard: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(16)
+        .glassCard()
     }
 }
