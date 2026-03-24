@@ -390,9 +390,11 @@ app.get('/api/camera/stream', (req, res) => {
   const rtspUrl = `rtsps://bblp:${PRINTER_ACCESS_CODE}@${PRINTER_IP}:322/streaming/live/1`;
 
   const ffmpeg = spawn('ffmpeg', [
-    '-loglevel', 'error',
+    '-loglevel', 'warning',
     '-rtsp_transport', 'tcp',
-    '-tls_verify', '0',   // Bambu Lab uses a self-signed TLS cert on RTSPS
+    '-tls_verify', '0',           // Bambu Lab uses a self-signed TLS cert on RTSPS
+    '-stimeout', '10000000',      // 10 s socket timeout — fail fast if printer unreachable
+    '-allowed_media_types', 'video',
     '-i', rtspUrl,
     '-f', 'image2pipe',
     '-vcodec', 'mjpeg',
@@ -458,10 +460,15 @@ app.get('/api/camera/stream', (req, res) => {
   ffmpeg.on('close', (code) => {
     console.log(`[camera] ffmpeg exited (code ${code})`);
     if (!headersSent) {
-      // ffmpeg failed before producing a single frame — return 503 so iOS shows a real error
-      const reason = code === 1
-        ? 'Cannot reach printer camera (port 322) — check printer IP and that port 322 is accessible from NAS'
-        : `Camera stream failed (ffmpeg exit ${code}) — check NAS logs`;
+      // ffmpeg failed before producing a single frame — return 503 so iOS shows a real error.
+      // Include the last 300 chars of stderr so the user can see the actual ffmpeg error.
+      const lastErr = stderrLog.trim().split('\n').slice(-3).join(' | ').slice(-300) || null;
+      let reason;
+      if (code === 1 && (!lastErr || lastErr.includes('Connection refused') || lastErr.includes('timed out') || lastErr.includes('No route'))) {
+        reason = `Cannot reach printer camera at ${PRINTER_IP}:322 — is the printer on and reachable from the NAS?`;
+      } else {
+        reason = `Camera stream failed (ffmpeg exit ${code})${lastErr ? ': ' + lastErr : ' — check NAS logs'}`;
+      }
       res.status(503).json({ error: reason });
     } else if (!res.writableEnded) {
       res.end();
