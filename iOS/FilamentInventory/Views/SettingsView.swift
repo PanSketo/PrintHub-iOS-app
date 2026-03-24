@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 // MARK: - Settings View
 struct SettingsView: View {
@@ -15,10 +16,11 @@ struct SettingsView: View {
     @State private var showCharts = false
     @State private var showShopping = false
     @State private var showAddPrinter = false
-    @State private var isBackingUp = false
+    @State private var exportFileURL: URL?
+    @State private var showShareSheet = false
+    @State private var showFileImporter = false
     @State private var isRestoring = false
-    @State private var restoreError: String?
-    @State private var showRestoreConfirm = false
+    @State private var importError: String?
     @FocusState private var focusedField: SettingsField?
     @AppStorage("app_color_scheme") private var colorSchemePreference: String = "system"
 
@@ -285,19 +287,28 @@ struct SettingsView: View {
                     Text("Each printer can point to a different NAS backend. Tap a printer to set it as active.")
                 }
 
-                // iCloud Backup
+                // Backup & Restore
                 Section {
-                    HStack {
-                        Image(systemName: cloudBackup.isAvailable ? "icloud.fill" : "icloud.slash")
-                            .foregroundColor(cloudBackup.isAvailable ? .blue : .secondary)
-                        Text(cloudBackup.isAvailable ? "iCloud Available" : "iCloud Not Available")
-                            .foregroundColor(cloudBackup.isAvailable ? .primary : .secondary)
+                    Button(action: triggerExport) {
+                        Label("Export Inventory", systemImage: "square.and.arrow.up")
                     }
-                    if let lastBackup = cloudBackup.lastBackupDate {
+                    .foregroundColor(.blue)
+
+                    Button(action: { showFileImporter = true }) {
                         HStack {
-                            Text("Last Backup")
+                            if isRestoring { ProgressView().scaleEffect(0.8) }
+                            Label(isRestoring ? "Importing…" : "Import Backup",
+                                  systemImage: "square.and.arrow.down")
+                        }
+                    }
+                    .disabled(isRestoring)
+                    .foregroundColor(.blue)
+
+                    if let lastExport = cloudBackup.lastBackupDate {
+                        HStack {
+                            Text("Last Export")
                             Spacer()
-                            Text(lastBackup, style: .relative)
+                            Text(lastExport, style: .relative)
                                 .foregroundColor(.secondary)
                                 .font(.caption)
                         }
@@ -307,26 +318,13 @@ struct SettingsView: View {
                             .font(.caption)
                             .foregroundColor(cloudBackup.statusMessage.contains("✅") ? .green : .orange)
                     }
-                    Button(action: triggerBackup) {
-                        HStack {
-                            if isBackingUp { ProgressView().scaleEffect(0.8) }
-                            else { Image(systemName: "icloud.and.arrow.up") }
-                            Text(isBackingUp ? "Backing up…" : "Back Up Now")
-                        }
-                    }
-                    .disabled(!cloudBackup.isAvailable || isBackingUp)
-                    .foregroundColor(.blue)
-
-                    Button("Restore from iCloud") { showRestoreConfirm = true }
-                        .disabled(!cloudBackup.isAvailable || isRestoring)
-                        .foregroundColor(.blue)
-                    if let err = restoreError {
+                    if let err = importError {
                         Text(err).font(.caption).foregroundColor(.red)
                     }
                 } header: {
-                    Text("iCloud Backup")
+                    Text("Backup & Restore")
                 } footer: {
-                    Text("Backs up your filament inventory to iCloud Key-Value Storage. Requires 'iCloud Key-Value Storage' capability enabled in Xcode.")
+                    Text("Export your inventory as a JSON file to share or save anywhere. Import a previously exported file to restore your data.")
                 }
 
                 // Danger Zone
@@ -402,11 +400,23 @@ struct SettingsView: View {
             .sheet(isPresented: $showAddPrinter) {
                 AddPrinterSheet(printerManager: printerManager)
             }
-            .alert("Restore from iCloud?", isPresented: $showRestoreConfirm) {
-                Button("Restore", role: .destructive) { triggerRestore() }
-                Button("Cancel", role: .cancel) {}
-            } message: {
-                Text("This will replace your current local inventory with the iCloud backup. This cannot be undone.")
+            .sheet(isPresented: $showShareSheet) {
+                if let url = exportFileURL {
+                    ActivityViewController(activityItems: [url])
+                }
+            }
+            .fileImporter(
+                isPresented: $showFileImporter,
+                allowedContentTypes: [.json],
+                allowsMultipleSelection: false
+            ) { result in
+                switch result {
+                case .success(let urls):
+                    guard let url = urls.first else { return }
+                    triggerImport(from: url)
+                case .failure(let error):
+                    importError = error.localizedDescription
+                }
             }
         }
     }
@@ -423,20 +433,17 @@ struct SettingsView: View {
         }
     }
 
-    func triggerBackup() {
-        isBackingUp = true
-        Task {
-            await cloudBackup.backup(filaments: store.filaments, jobs: store.printJobs)
-            await MainActor.run { isBackingUp = false }
-        }
+    func triggerExport() {
+        exportFileURL = cloudBackup.exportURL(filaments: store.filaments, jobs: store.printJobs)
+        if exportFileURL != nil { showShareSheet = true }
     }
 
-    func triggerRestore() {
+    func triggerImport(from url: URL) {
         isRestoring = true
-        restoreError = nil
+        importError = nil
         Task {
             do {
-                let (filaments, jobs) = try await cloudBackup.restore()
+                let (filaments, jobs) = try cloudBackup.restore(from: url)
                 await MainActor.run {
                     store.filaments = filaments
                     store.printJobs = jobs
@@ -444,7 +451,7 @@ struct SettingsView: View {
                 }
             } catch {
                 await MainActor.run {
-                    restoreError = error.localizedDescription
+                    importError = error.localizedDescription
                     isRestoring = false
                 }
             }
@@ -627,6 +634,17 @@ struct NASSetupView: View {
 
 extension Double {
     var nonZero: Double? { self == 0 ? nil : self }
+}
+
+// MARK: - Activity View Controller (Share Sheet)
+struct ActivityViewController: UIViewControllerRepresentable {
+    let activityItems: [Any]
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
 
 // MARK: - Theme Option Button

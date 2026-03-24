@@ -1,114 +1,121 @@
 import Foundation
 import Combine
+import UIKit
 
-// MARK: - iCloud Backup Service
-// Backs up the inventory JSON to NSUbiquitousKeyValueStore (iCloud Key-Value Storage).
+// MARK: - Backup Service
+// Exports / imports the full inventory as a single JSON file.
+// Works without ANY entitlements or special capabilities — no Xcode/Mac needed.
 //
-// SETUP REQUIRED (one-time in Xcode):
-//   Project → Signing & Capabilities → "+ Capability" → iCloud
-//   Enable "Key-value storage"  ← that's all.
+// Export: encodes filaments + print jobs → writes to a temp file → returns a URL
+//         the caller presents as a share sheet (UIActivityViewController) or
+//         SwiftUI .shareLink / fileExporter.
 //
-// The service degrades gracefully when:
-//   • The user is not signed into iCloud  (isAvailable = false)
-//   • The entitlement is missing          (isAvailable = false)
-//   • The payload exceeds 1 MB            (shows a warning, partial backup)
+// Import: the caller presents a .fileImporter → user picks the JSON →
+//         calls restore(from:) with the chosen URL.
 
 class CloudBackupService: ObservableObject {
     static let shared = CloudBackupService()
 
     @Published var lastBackupDate: Date?
-    @Published var isAvailable: Bool = false
     @Published var statusMessage: String = ""
 
-    private let kv = NSUbiquitousKeyValueStore.default
-    private let filamentsKey  = "icloud_filaments_v1"
-    private let jobsKey       = "icloud_printjobs_v1"
-    private let backupDateKey = "icloud_backup_date_v1"
+    // Always available — no entitlements required
+    var isAvailable: Bool { true }
 
-    private static let kvMaxBytes = 1_000_000   // iCloud KV store hard limit per app
+    private let lastBackupKey = "json_backup_date_v1"
 
     private init() {
-        refreshAvailability()
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(kvStoreDidChange),
-            name: NSUbiquitousKeyValueStore.didChangeExternallyNotification,
-            object: kv
-        )
-        kv.synchronize()
-    }
-
-    // MARK: - Availability
-
-    func refreshAvailability() {
-        isAvailable = FileManager.default.ubiquityIdentityToken != nil
-        let ts = kv.double(forKey: backupDateKey)
+        let ts = UserDefaults.standard.double(forKey: lastBackupKey)
         if ts > 0 { lastBackupDate = Date(timeIntervalSince1970: ts) }
     }
 
-    // MARK: - Backup
+    // MARK: - Export
 
-    func backup(filaments: [Filament], jobs: [PrintJob]) async {
-        guard isAvailable else {
-            await setStatus("iCloud not available. Sign in to iCloud in Settings.")
-            return
-        }
+    /// Encodes the inventory to a JSON file in the temp directory and returns its URL.
+    /// Present the URL with UIActivityViewController or SwiftUI .shareLink.
+    func exportURL(filaments: [Filament], jobs: [PrintJob]) -> URL? {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
-        guard let fData = try? encoder.encode(filaments),
-              let jData = try? encoder.encode(jobs) else {
-            await setStatus("Backup failed: encoding error.")
-            return
+        encoder.outputFormatting = .prettyPrinted
+
+        let payload: [String: Any] = [
+            "exportedAt": ISO8601DateFormatter().string(from: Date()),
+            "version": 1
+        ]
+        _ = payload // metadata kept for future versioning; not yet encoded separately
+
+        struct BackupPayload: Encodable {
+            let exportedAt: String
+            let version: Int
+            let filaments: [Filament]
+            let printJobs: [PrintJob]
         }
-        let totalBytes = fData.count + jData.count
-        if totalBytes > Self.kvMaxBytes {
-            await setStatus("⚠️ Inventory too large for iCloud KV (\(totalBytes / 1024) KB). Only filaments backed up.")
-            kv.set(fData, forKey: filamentsKey)
-        } else {
-            kv.set(fData, forKey: filamentsKey)
-            kv.set(jData, forKey: jobsKey)
-        }
-        kv.set(Date().timeIntervalSince1970, forKey: backupDateKey)
-        kv.synchronize()
-        await MainActor.run {
-            self.lastBackupDate = Date()
-            self.statusMessage = "✅ Backed up \(totalBytes / 1024) KB to iCloud"
-        }
+        let backup = BackupPayload(
+            exportedAt: ISO8601DateFormatter().string(from: Date()),
+            version: 1,
+            filaments: filaments,
+            printJobs: jobs
+        )
+        guard let data = try? encoder.encode(backup) else { return nil }
+
+        let fileName = "FilamentInventory-\(dateStamp()).json"
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
+        try? data.write(to: url)
+
+        UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: lastBackupKey)
+        lastBackupDate = Date()
+        statusMessage = "✅ Ready to share (\(data.count / 1024) KB)"
+        return url
     }
 
-    // MARK: - Restore
-
-    func restore() async throws -> (filaments: [Filament], jobs: [PrintJob]) {
-        guard isAvailable else { throw BackupError.notAvailable }
-        guard let fData = kv.data(forKey: filamentsKey) else { throw BackupError.noBackupFound }
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        let filaments = try decoder.decode([Filament].self, from: fData)
-        var jobs: [PrintJob] = []
-        if let jData = kv.data(forKey: jobsKey) {
-            jobs = (try? decoder.decode([PrintJob].self, from: jData)) ?? []
-        }
-        return (filaments, jobs)
-    }
-
-    // MARK: - KV Change from another device
-
-    @objc private func kvStoreDidChange(_ notification: Notification) {
-        refreshAvailability()
-    }
-
-    @MainActor private func setStatus(_ msg: String) { statusMessage = msg }
-
-    // MARK: - Errors
+    // MARK: - Import
 
     enum BackupError: LocalizedError {
-        case notAvailable
-        case noBackupFound
+        case unreadable
+        case invalidFormat
         var errorDescription: String? {
             switch self {
-            case .notAvailable:  return "iCloud is not available. Sign in to iCloud in Settings."
-            case .noBackupFound: return "No iCloud backup found. Back up your inventory first."
+            case .unreadable:     return "Could not read the backup file."
+            case .invalidFormat:  return "File is not a valid Filament Inventory backup."
             }
         }
+    }
+
+    /// Decodes a previously exported JSON file and returns the inventory objects.
+    func restore(from url: URL) throws -> (filaments: [Filament], jobs: [PrintJob]) {
+        // Security-scoped resource access for files picked via UIDocumentPickerViewController
+        let accessing = url.startAccessingSecurityScopedResource()
+        defer { if accessing { url.stopAccessingSecurityScopedResource() } }
+
+        guard let data = try? Data(contentsOf: url) else { throw BackupError.unreadable }
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+
+        // Try versioned wrapper first, then fall back to bare arrays
+        struct BackupPayload: Decodable {
+            let filaments: [Filament]
+            let printJobs: [PrintJob]
+        }
+        if let payload = try? decoder.decode(BackupPayload.self, from: data) {
+            return (payload.filaments, payload.printJobs)
+        }
+        // Bare filament array (legacy / manual export)
+        if let filaments = try? decoder.decode([Filament].self, from: data) {
+            return (filaments, [])
+        }
+        throw BackupError.invalidFormat
+    }
+
+    // MARK: - Helpers
+
+    func refreshAvailability() {}   // kept so callers don't need changes
+
+    func backup(filaments: [Filament], jobs: [PrintJob]) async {}  // no-op; export is manual
+
+    private func dateStamp() -> String {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd"
+        return f.string(from: Date())
     }
 }

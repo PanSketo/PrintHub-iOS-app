@@ -216,11 +216,7 @@ class InventoryStore: ObservableObject {
                 if let filament = updatedFilament {
                     try await nas.saveFilament(filament)
                 }
-                // Trigger iCloud backup after every logged print
-                Task {
-                    let (f, j) = await MainActor.run { (self.filaments, self.printJobs) }
-                    await CloudBackupService.shared.backup(filaments: f, jobs: j)
-                }
+
             } catch {
                 await MainActor.run { self.errorMessage = error.localizedDescription }
             }
