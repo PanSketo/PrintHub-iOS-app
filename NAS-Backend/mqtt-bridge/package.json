@@ -1,0 +1,16 @@
+{
+  "name": "filament-inventory-mqtt-bridge",
+  "version": "1.0.0",
+  "description": "Bambu Lab MQTT bridge for Filament Inventory",
+  "main": "bridge.js",
+  "scripts": {
+    "start": "node bridge.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^9.4.3",
+    "mqtt": "^5.3.4"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

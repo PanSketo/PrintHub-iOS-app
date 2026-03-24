@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleDisplayName</key>
+	<string>Filament Inventory</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(MARKETING_VERSION)</string>
+	<key>CFBundleVersion</key>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
+
+	<!-- Camera permission for barcode scanning -->
+	<key>NSCameraUsageDescription</key>
+	<string>Camera is needed to scan filament barcodes for quick inventory entry.</string>
+
+	<!-- Notifications permission for low stock alerts -->
+	<key>NSUserNotificationUsageDescription</key>
+	<string>Notifications are used to alert you when filament stock is running low.</string>
+
+	<!-- Network access for fetching filament info and NAS sync -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+		<key>NSExceptionDomains</key>
+		<dict>
+			<key>REDACTED-PRINTER-IP0</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>REDACTED-DDNS</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+		</dict>
+	</dict>
+
+	<!-- Supported orientations - portrait only for scanner UX -->
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+	</array>
+
+	<key>UILaunchScreen</key>
+	<dict/>
+
+	<key>UIRequiresFullScreen</key>
+	<true/>
+
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+
+	<!-- Developer / copyright info (shown in iOS Settings > App Info) -->
+	<key>NSHumanReadableCopyright</key>
+	<string>© 2025 Pantelis Tzelesis. All rights reserved.</string>
+	<key>CFBundleGetInfoString</key>
+	<string>Filament Inventory 1.0 © 2025 Pantelis Tzelesis</string>
+</dict>
+</plist>
