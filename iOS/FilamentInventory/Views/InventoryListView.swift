@@ -256,8 +256,7 @@ struct FilamentGridCard: View {
             }
         }
         .padding(12)
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(16)
+        .glassCard()
         .shadow(color: Color.black.opacity(0.06), radius: 5, x: 0, y: 2)
         .onAppear { loadImages() }
     }

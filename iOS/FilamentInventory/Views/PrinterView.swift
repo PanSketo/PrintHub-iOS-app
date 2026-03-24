@@ -139,8 +139,7 @@ struct PrinterStatusView: View {
             }
         }
         .padding(12)
-        .background(connected ? Color.green.opacity(0.1) : Color.red.opacity(0.08))
-        .cornerRadius(12)
+        .glassTintCard(cornerRadius: 12, fallback: connected ? Color.green.opacity(0.1) : Color.red.opacity(0.08))
     }
 
     // MARK: - Idle Card
@@ -163,8 +162,7 @@ struct PrinterStatusView: View {
             Spacer()
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(16)
+        .glassCard()
     }
 
     // MARK: - Bridge Setup Card
@@ -208,8 +206,7 @@ struct PrinterStatusView: View {
             .buttonStyle(.plain)
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(16)
+        .glassCard()
     }
 
     func setupStep(n: String, text: String) -> some View {
@@ -344,8 +341,7 @@ struct PrintProgressCard: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(16)
+        .glassCard()
     }
 
     func statBadge(icon: String, value: String, label: String) -> some View {
@@ -375,8 +371,7 @@ struct TemperatureCard: View {
             tempTile(label: "Chamber", value: state.chamberTemp, icon: "house.fill", color: .purple)
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(16)
+        .glassCard()
     }
 
     func tempTile(label: String, value: Double, icon: String, color: Color) -> some View {
@@ -420,8 +415,7 @@ struct AMSStatusCard: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(16)
+        .glassCard()
     }
 }
 
@@ -487,8 +481,7 @@ struct AMSSlotTile: View {
             }
         }
         .padding(10)
-        .background(isActive ? Color.blue.opacity(0.08) : Color(.tertiarySystemBackground))
-        .cornerRadius(12)
+        .glassTintCard(cornerRadius: 12, fallback: isActive ? Color.blue.opacity(0.08) : Color(.tertiarySystemBackground))
         .overlay(
             RoundedRectangle(cornerRadius: 12)
                 .stroke(isActive ? Color.blue : Color.clear, lineWidth: 1.5)
@@ -549,8 +542,7 @@ struct AMSMappingCard: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(16)
+        .glassCard()
     }
 
     func saveMapping(key: String, filamentId: String) {

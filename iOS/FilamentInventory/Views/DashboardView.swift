@@ -193,8 +193,7 @@ struct StatCard: View {
         }
         .padding()
         .frame(maxWidth: .infinity)
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(16)
+        .glassCard()
     }
 }
 
@@ -220,8 +219,7 @@ struct SyncStatusBar: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(10)
+        .glassCard(cornerRadius: 10)
     }
 }
 
@@ -244,8 +242,7 @@ struct LowStockSection: View {
             }
         }
         .padding()
-        .background(Color.orange.opacity(0.1))
-        .cornerRadius(16)
+        .glassTintCard(fallback: Color.orange.opacity(0.1))
     }
 }
 
@@ -303,14 +300,12 @@ struct TypeBreakdownSection: View {
                         .foregroundColor(.secondary)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
-                        .background(Color(.tertiarySystemBackground))
-                        .cornerRadius(8)
+                        .glassInnerCard(cornerRadius: 8)
                 }
             }
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(16)
+        .glassCard()
     }
 }
 
@@ -348,8 +343,7 @@ struct RecentPrintsSection: View {
                 }
             }
             .padding()
-            .background(Color(.secondarySystemBackground))
-            .cornerRadius(16)
+            .glassCard()
         }
     }
 }

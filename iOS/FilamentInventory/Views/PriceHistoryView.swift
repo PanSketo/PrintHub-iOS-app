@@ -45,8 +45,7 @@ struct PriceHistoryView: View {
                 priceTile(label: "Highest", value: maxPrice, color: .red)
             }
             .padding(.vertical, 4)
-            .background(Color(.tertiarySystemBackground))
-            .cornerRadius(12)
+            .glassInnerCard()
 
             // Trend mini chart
             if allEntries.count > 1 {
@@ -91,8 +90,7 @@ struct PriceHistoryView: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
-        .cornerRadius(16)
+        .glassCard()
         .sheet(isPresented: $showAddPrice) {
             addPriceSheet
         }
