@@ -151,6 +151,12 @@ struct CameraFeedCard: View {
         .cornerRadius(16)
         .onAppear { streamer.start(baseURL: nasService.baseURL, apiKey: nasService.apiKey) }
         .onDisappear { streamer.stop() }
+        .onChange(of: nasService.isConnected) { connected in
+            // Restart the stream if the NAS (re)connects while the card is visible
+            if connected && !streamer.isStreaming {
+                streamer.start(baseURL: nasService.baseURL, apiKey: nasService.apiKey)
+            }
+        }
     }
 
     // MARK: - Sub-views

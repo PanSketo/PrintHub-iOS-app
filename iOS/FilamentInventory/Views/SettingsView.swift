@@ -399,6 +399,7 @@ struct NASSetupView: View {
                     Button("Continue →") {
                         nasService.baseURL = nasURL
                         nasService.apiKey = apiKey
+                        Task { await nasService.autoConnect() }
                     }
                     .frame(maxWidth: .infinity)
                     .padding()
