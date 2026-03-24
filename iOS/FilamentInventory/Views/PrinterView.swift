@@ -2,10 +2,44 @@ import SwiftUI
 
 // MARK: - Printer Tab View
 struct PrinterView: View {
+    @EnvironmentObject var nasService: NASService
+    @StateObject private var printerManager = PrinterManager.shared
     @State private var selectedSection = 0
 
     var body: some View {
         VStack(spacing: 0) {
+            // ── Printer selector (only shown when more than one printer is configured) ──
+            if printerManager.printers.count > 1 {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(printerManager.printers) { printer in
+                            let isActive = printer.id == printerManager.activePrinterId
+                            Button {
+                                printerManager.setActive(id: printer.id)
+                            } label: {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "printer.fill")
+                                        .font(.caption)
+                                    Text(printer.name)
+                                        .font(.caption)
+                                        .fontWeight(isActive ? .semibold : .regular)
+                                }
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(isActive ? Color.orange : Color(.tertiarySystemBackground))
+                                .foregroundColor(isActive ? .white : .primary)
+                                .cornerRadius(20)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.horizontal)
+                }
+                .padding(.vertical, 6)
+                .background(Color(.systemBackground))
+                Divider()
+            }
+
             // Segmented control at the top — cleaner than nested TabView
             Picker("Section", selection: $selectedSection) {
                 Text("Live Status").tag(0)
@@ -21,7 +55,7 @@ struct PrinterView: View {
 
             // Content
             if selectedSection == 0 {
-                PrinterStatusView()
+                PrinterStatusView(printerConfig: printerManager.activePrinter)
             } else {
                 PrintLogView()
             }
@@ -33,6 +67,9 @@ struct PrinterView: View {
 struct PrinterStatusView: View {
     @EnvironmentObject var store: InventoryStore
     @EnvironmentObject var nasService: NASService
+
+    /// When non-nil, all API calls use this printer's credentials instead of the global NAS.
+    let printerConfig: PrinterConfig?
 
     @State private var printerState: PrinterState? = nil
     @State private var amsMappings: [String: String] = [:]
@@ -88,7 +125,8 @@ struct PrinterStatusView: View {
                         // ── AMS Mapping (always shown so user can configure) ──
                         AMSMappingCard(
                             mappings: $amsMappings,
-                            filaments: store.filaments
+                            filaments: store.filaments,
+                            printerConfig: printerConfig
                         )
                     }
                 }
@@ -115,6 +153,7 @@ struct PrinterStatusView: View {
     // MARK: - Connection Banner
     var connectionBanner: some View {
         let connected = printerState?.connected ?? false
+        let printerName = printerConfig?.name ?? "P2S"
         // Build timestamp label safely — avoids optional chaining type ambiguity
         let tsLabel: String = {
             guard let ts = printerState?.live?.timestamp else { return "" }
@@ -126,7 +165,7 @@ struct PrinterStatusView: View {
                 .frame(width: 10, height: 10)
                 .shadow(color: connected ? .green : .red, radius: 4)
 
-            Text(connected ? "P2S Connected" : "P2S Offline")
+            Text(connected ? "\(printerName) Connected" : "\(printerName) Offline")
                 .font(.subheadline).fontWeight(.semibold)
 
             Spacer()
@@ -245,7 +284,7 @@ struct PrinterStatusView: View {
 
     func fetchState() async {
         do {
-            let state = try await nasService.fetchPrinterState()
+            let state = try await nasService.fetchPrinterState(using: printerConfig)
             await MainActor.run {
                 self.error = nil
                 self.printerState = state
@@ -264,12 +303,12 @@ struct PrinterStatusView: View {
             }
         }
         // Check for new print events on every poll tick (NASService rate-limits to 20 s)
-        await nasService.checkPrintEvents()
+        await nasService.checkPrintEvents(using: printerConfig)
     }
 
     func fetchMappings() async {
         do {
-            let mappings = try await nasService.fetchAMSMappings()
+            let mappings = try await nasService.fetchAMSMappings(using: printerConfig)
             await MainActor.run { self.amsMappings = mappings }
         } catch { }
     }
@@ -493,6 +532,7 @@ struct AMSSlotTile: View {
 struct AMSMappingCard: View {
     @Binding var mappings: [String: String]
     let filaments: [Filament]
+    var printerConfig: PrinterConfig?
     @EnvironmentObject var nasService: NASService
     @State private var savedMessage = ""
 
@@ -549,9 +589,9 @@ struct AMSMappingCard: View {
         Task {
             do {
                 if filamentId.isEmpty {
-                    try await nasService.deleteAMSMapping(slotKey: key)
+                    try await nasService.deleteAMSMapping(slotKey: key, using: printerConfig)
                 } else {
-                    try await nasService.saveAMSMapping(slotKey: key, filamentId: filamentId)
+                    try await nasService.saveAMSMapping(slotKey: key, filamentId: filamentId, using: printerConfig)
                 }
                 await MainActor.run {
                     savedMessage = "✅ Saved"

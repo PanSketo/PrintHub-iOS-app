@@ -171,6 +171,13 @@ class NASService: ObservableObject {
         decoder.dateDecodingStrategy = .iso8601
         return try decoder.decode([PrintJob].self, from: data)
     }
+    // MARK: - Shared decoder helper
+    static func makeDateDecoder() -> JSONDecoder {
+        let d = JSONDecoder()
+        d.dateDecodingStrategy = .iso8601
+        return d
+    }
+
     // MARK: - Printer Events
     struct PrinterEvent: Codable {
         let id: String
@@ -193,29 +200,46 @@ class NASService: ObservableObject {
         return try NASService.makeDateDecoder().decode([PrinterEvent].self, from: data)
     }
 
-    /// Polls for new print events and fires local notifications. Rate-limited to once per 20 s.
-    /// Call this from the Printer tab polling loop AND whenever the app returns to foreground.
-    private var lastEventCheckAt: Date = .distantPast
+    /// Polls for new print events and fires local notifications. Rate-limited to once per 20 s
+    /// per printer. Accepts an optional PrinterConfig; falls back to the global NAS when nil.
+    private var lastEventCheckByPrinter: [String: Date] = [:]
     private let lastEventCheckKey = "last_print_event_check_iso"
 
-    func checkPrintEvents() async {
+    func checkPrintEvents(using config: PrinterConfig? = nil) async {
         guard isConfigured, isConnected else { return }
-        guard Date().timeIntervalSince(lastEventCheckAt) >= 20 else { return }
-        lastEventCheckAt = Date()
 
+        // Rate-limit key: printer id if known, else "default"
+        let rateKey = config?.id ?? "default"
+        let last = lastEventCheckByPrinter[rateKey] ?? .distantPast
+        guard Date().timeIntervalSince(last) >= 20 else { return }
+        lastEventCheckByPrinter[rateKey] = Date()
+
+        // Persist cursor per printer so events from different printers don't clobber each other
         let defaults = UserDefaults.standard
+        let cursorKey = lastEventCheckKey + "_" + rateKey
         let formatter = ISO8601DateFormatter()
 
-        guard let sinceIso = defaults.string(forKey: lastEventCheckKey),
+        guard let sinceIso = defaults.string(forKey: cursorKey),
               let since = formatter.date(from: sinceIso) else {
-            // First launch — set cursor to now; don't notify for historical events
-            defaults.set(formatter.string(from: Date()), forKey: lastEventCheckKey)
+            // First run — set cursor to now; don't notify for historical events
+            defaults.set(formatter.string(from: Date()), forKey: cursorKey)
             return
         }
 
+        // Fetch events from the correct backend
+        let base = config?.nasURL ?? baseURL
+        let key  = config?.apiKey ?? apiKey
+        var components = URLComponents(string: "\(base)/api/printer/events")
+        components?.queryItems = [URLQueryItem(name: "since", value: formatter.string(from: since))]
+        guard let url = components?.url else { return }
+        var request = URLRequest(url: url)
+        request.addValue(key, forHTTPHeaderField: "X-API-Key")
+
         do {
-            let events = try await fetchPrinterEvents(since: since)
-            defaults.set(formatter.string(from: Date()), forKey: lastEventCheckKey)
+            let (data, response) = try await session.data(for: request)
+            guard (response as? HTTPURLResponse)?.statusCode == 200 else { return }
+            let events = try NASService.makeDateDecoder().decode([PrinterEvent].self, from: data)
+            defaults.set(formatter.string(from: Date()), forKey: cursorKey)
             for event in events {
                 switch event.eventType {
                 case "print_started":
@@ -232,12 +256,15 @@ class NASService: ObservableObject {
     }
 
     // MARK: - Printer State
-    func fetchPrinterState() async throws -> PrinterState {
-        guard let url = URL(string: "\(baseURL)/api/printer/state") else {
+    // Accepts an optional PrinterConfig; falls back to the global NAS credentials when nil.
+    func fetchPrinterState(using config: PrinterConfig? = nil) async throws -> PrinterState {
+        let base = config?.nasURL ?? baseURL
+        let key  = config?.apiKey ?? apiKey
+        guard let url = URL(string: "\(base)/api/printer/state") else {
             throw NASError.invalidURL
         }
         var request = URLRequest(url: url)
-        request.addValue(apiKey, forHTTPHeaderField: "X-API-Key")
+        request.addValue(key, forHTTPHeaderField: "X-API-Key")
         let (data, response) = try await session.data(for: request)
         let statusCode = (response as? HTTPURLResponse)?.statusCode ?? 0
         guard statusCode == 200 else {
@@ -260,12 +287,14 @@ class NASService: ObservableObject {
     }
 
     // MARK: - AMS Mappings
-    func fetchAMSMappings() async throws -> [String: String] {
-        guard let url = URL(string: "\(baseURL)/api/ams/mappings") else {
+    func fetchAMSMappings(using config: PrinterConfig? = nil) async throws -> [String: String] {
+        let base = config?.nasURL ?? baseURL
+        let key  = config?.apiKey ?? apiKey
+        guard let url = URL(string: "\(base)/api/ams/mappings") else {
             throw NASError.invalidURL
         }
         var request = URLRequest(url: url)
-        request.addValue(apiKey, forHTTPHeaderField: "X-API-Key")
+        request.addValue(key, forHTTPHeaderField: "X-API-Key")
         let (data, response) = try await session.data(for: request)
         guard (response as? HTTPURLResponse)?.statusCode == 200 else {
             throw NASError.serverError
@@ -273,14 +302,16 @@ class NASService: ObservableObject {
         return try JSONDecoder().decode([String: String].self, from: data)
     }
 
-    func saveAMSMapping(slotKey: String, filamentId: String) async throws {
-        guard let url = URL(string: "\(baseURL)/api/ams/mappings/\(slotKey)") else {
+    func saveAMSMapping(slotKey: String, filamentId: String, using config: PrinterConfig? = nil) async throws {
+        let base = config?.nasURL ?? baseURL
+        let key  = config?.apiKey ?? apiKey
+        guard let url = URL(string: "\(base)/api/ams/mappings/\(slotKey)") else {
             throw NASError.invalidURL
         }
         var request = URLRequest(url: url)
         request.httpMethod = "PUT"
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.addValue(apiKey, forHTTPHeaderField: "X-API-Key")
+        request.addValue(key, forHTTPHeaderField: "X-API-Key")
         request.httpBody = try JSONEncoder().encode(["filamentId": filamentId])
         let (_, response) = try await session.data(for: request)
         guard (response as? HTTPURLResponse)?.statusCode == 200 else {
@@ -310,13 +341,15 @@ class NASService: ObservableObject {
         return localURL
     }
 
-    func deleteAMSMapping(slotKey: String) async throws {
-        guard let url = URL(string: "\(baseURL)/api/ams/mappings/\(slotKey)") else {
+    func deleteAMSMapping(slotKey: String, using config: PrinterConfig? = nil) async throws {
+        let base = config?.nasURL ?? baseURL
+        let key  = config?.apiKey ?? apiKey
+        guard let url = URL(string: "\(base)/api/ams/mappings/\(slotKey)") else {
             throw NASError.invalidURL
         }
         var request = URLRequest(url: url)
         request.httpMethod = "DELETE"
-        request.addValue(apiKey, forHTTPHeaderField: "X-API-Key")
+        request.addValue(key, forHTTPHeaderField: "X-API-Key")
         let (_, response) = try await session.data(for: request)
         guard (response as? HTTPURLResponse)?.statusCode == 200 else {
             throw NASError.serverError

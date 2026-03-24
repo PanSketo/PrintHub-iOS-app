@@ -4,6 +4,8 @@ import SwiftUI
 struct SettingsView: View {
     @EnvironmentObject var nasService: NASService
     @EnvironmentObject var store: InventoryStore
+    @StateObject private var printerManager = PrinterManager.shared
+    @StateObject private var cloudBackup = CloudBackupService.shared
     @State private var nasURL: String = ""
     @State private var apiKey: String = ""
     @State private var connectionStatus: String = ""
@@ -12,6 +14,11 @@ struct SettingsView: View {
     @State private var showResetAlert = false
     @State private var showCharts = false
     @State private var showShopping = false
+    @State private var showAddPrinter = false
+    @State private var isBackingUp = false
+    @State private var isRestoring = false
+    @State private var restoreError: String?
+    @State private var showRestoreConfirm = false
     @FocusState private var focusedField: SettingsField?
     @AppStorage("app_color_scheme") private var colorSchemePreference: String = "system"
 
@@ -243,6 +250,85 @@ struct SettingsView: View {
                     Text("About Filament Inventory")
                 }
 
+                // Printers
+                Section {
+                    ForEach(printerManager.printers) { printer in
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(printer.name)
+                                    .font(.subheadline)
+                                    .fontWeight(printer.id == printerManager.activePrinterId ? .semibold : .regular)
+                                Text(printer.nasURL)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                    .lineLimit(1)
+                            }
+                            Spacer()
+                            if printer.id == printerManager.activePrinterId {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundColor(.orange)
+                            }
+                        }
+                        .contentShape(Rectangle())
+                        .onTapGesture { printerManager.setActive(id: printer.id) }
+                    }
+                    .onDelete { indices in
+                        indices.forEach { printerManager.removePrinter(id: printerManager.printers[$0].id) }
+                    }
+                    Button(action: { showAddPrinter = true }) {
+                        Label("Add Printer", systemImage: "plus")
+                    }
+                    .foregroundColor(.orange)
+                } header: {
+                    Text("Printers")
+                } footer: {
+                    Text("Each printer can point to a different NAS backend. Tap a printer to set it as active.")
+                }
+
+                // iCloud Backup
+                Section {
+                    HStack {
+                        Image(systemName: cloudBackup.isAvailable ? "icloud.fill" : "icloud.slash")
+                            .foregroundColor(cloudBackup.isAvailable ? .blue : .secondary)
+                        Text(cloudBackup.isAvailable ? "iCloud Available" : "iCloud Not Available")
+                            .foregroundColor(cloudBackup.isAvailable ? .primary : .secondary)
+                    }
+                    if let lastBackup = cloudBackup.lastBackupDate {
+                        HStack {
+                            Text("Last Backup")
+                            Spacer()
+                            Text(lastBackup, style: .relative)
+                                .foregroundColor(.secondary)
+                                .font(.caption)
+                        }
+                    }
+                    if !cloudBackup.statusMessage.isEmpty {
+                        Text(cloudBackup.statusMessage)
+                            .font(.caption)
+                            .foregroundColor(cloudBackup.statusMessage.contains("✅") ? .green : .orange)
+                    }
+                    Button(action: triggerBackup) {
+                        HStack {
+                            if isBackingUp { ProgressView().scaleEffect(0.8) }
+                            else { Image(systemName: "icloud.and.arrow.up") }
+                            Text(isBackingUp ? "Backing up…" : "Back Up Now")
+                        }
+                    }
+                    .disabled(!cloudBackup.isAvailable || isBackingUp)
+                    .foregroundColor(.blue)
+
+                    Button("Restore from iCloud") { showRestoreConfirm = true }
+                        .disabled(!cloudBackup.isAvailable || isRestoring)
+                        .foregroundColor(.blue)
+                    if let err = restoreError {
+                        Text(err).font(.caption).foregroundColor(.red)
+                    }
+                } header: {
+                    Text("iCloud Backup")
+                } footer: {
+                    Text("Backs up your filament inventory to iCloud Key-Value Storage. Requires 'iCloud Key-Value Storage' capability enabled in Xcode.")
+                }
+
                 // Danger Zone
                 Section {
                     Button("Force Sync from NAS") {
@@ -307,6 +393,15 @@ struct SettingsView: View {
                         }
                 }
             }
+            .sheet(isPresented: $showAddPrinter) {
+                AddPrinterSheet(printerManager: printerManager)
+            }
+            .alert("Restore from iCloud?", isPresented: $showRestoreConfirm) {
+                Button("Restore", role: .destructive) { triggerRestore() }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This will replace your current local inventory with the iCloud backup. This cannot be undone.")
+            }
         }
     }
 
@@ -318,6 +413,98 @@ struct SettingsView: View {
             await MainActor.run {
                 isTesting = false
                 connectionStatus = ok ? "✅ Connected successfully!" : "❌ Could not connect. Check URL and API key."
+            }
+        }
+    }
+
+    func triggerBackup() {
+        isBackingUp = true
+        Task {
+            await cloudBackup.backup(filaments: store.filaments, jobs: store.printJobs)
+            await MainActor.run { isBackingUp = false }
+        }
+    }
+
+    func triggerRestore() {
+        isRestoring = true
+        restoreError = nil
+        Task {
+            do {
+                let (filaments, jobs) = try await cloudBackup.restore()
+                await MainActor.run {
+                    store.filaments = filaments
+                    store.printJobs = jobs
+                    isRestoring = false
+                }
+            } catch {
+                await MainActor.run {
+                    restoreError = error.localizedDescription
+                    isRestoring = false
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Add Printer Sheet
+struct AddPrinterSheet: View {
+    @ObservedObject var printerManager: PrinterManager
+    @Environment(\.dismiss) var dismiss
+
+    @State private var name = ""
+    @State private var nasURL = ""
+    @State private var apiKey = ""
+    @State private var notes = ""
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section {
+                    HStack {
+                        Text("Name")
+                        Spacer()
+                        TextField("e.g. Bambu P2S", text: $name)
+                            .multilineTextAlignment(.trailing)
+                    }
+                } header: { Text("Printer") }
+
+                Section {
+                    HStack {
+                        Text("NAS URL")
+                        Spacer()
+                        TextField("http://192.168.1.200:3456", text: $nasURL)
+                            .multilineTextAlignment(.trailing)
+                            .autocapitalization(.none)
+                            .keyboardType(.URL)
+                    }
+                    HStack {
+                        Text("API Key")
+                        Spacer()
+                        SecureField("API key", text: $apiKey)
+                            .multilineTextAlignment(.trailing)
+                    }
+                } header: { Text("Connection") }
+
+                Section {
+                    TextField("Optional notes…", text: $notes, axis: .vertical)
+                        .lineLimit(3)
+                } header: { Text("Notes") }
+            }
+            .navigationTitle("Add Printer")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Add") {
+                        let config = PrinterConfig(name: name.isEmpty ? "Printer" : name, nasURL: nasURL, apiKey: apiKey, notes: notes)
+                        printerManager.addPrinter(config)
+                        dismiss()
+                    }
+                    .fontWeight(.semibold)
+                    .disabled(nasURL.isEmpty)
+                }
             }
         }
     }

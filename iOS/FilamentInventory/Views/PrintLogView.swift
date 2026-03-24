@@ -14,6 +14,10 @@ struct PrintLogView: View {
         store.printJobs.reduce(0) { $0 + $1.weightUsedG }
     }
 
+    var totalPrintCost: Double {
+        store.printJobs.compactMap(\.costEUR).reduce(0, +)
+    }
+
     var body: some View {
         NavigationView {
             List {
@@ -31,13 +35,27 @@ struct PrintLogView: View {
                         Spacer()
                         Divider().frame(height: 40)
                         Spacer()
-                        VStack(alignment: .trailing) {
+                        VStack(alignment: .center) {
                             Text("\(Int(totalWeightUsed))g")
                                 .font(.system(.title, design: .rounded))
                                 .fontWeight(.black)
                             Text("Total Used")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
+                        }
+                        if totalPrintCost > 0 {
+                            Spacer()
+                            Divider().frame(height: 40)
+                            Spacer()
+                            VStack(alignment: .trailing) {
+                                Text(String(format: "€%.2f", totalPrintCost))
+                                    .font(.system(.title, design: .rounded))
+                                    .fontWeight(.black)
+                                    .foregroundColor(.blue)
+                                Text("Print Cost")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
                         }
                     }
                     .padding(.vertical, 8)
@@ -123,6 +141,11 @@ struct PrintJobRow: View {
                 Text("\(Int(job.weightUsedG))g")
                     .font(.subheadline)
                     .fontWeight(.bold)
+                if let cost = job.costEUR {
+                    Text(String(format: "€%.3f", cost))
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
                 Image(systemName: job.success ? "checkmark.circle.fill" : "xmark.circle.fill")
                     .foregroundColor(job.success ? .green : .red)
                     .font(.caption)

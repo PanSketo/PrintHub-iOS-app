@@ -160,6 +160,17 @@ struct PrintJob: Identifiable, Codable, Hashable {
     var date: Date
     var notes: String = ""
     var success: Bool = true
+    var costEUR: Double? = nil      // computed at log time from filament price/gram
+}
+
+// MARK: - Printer Configuration
+// Each entry represents a separate printer backend (NAS + mqtt-bridge combo).
+struct PrinterConfig: Identifiable, Codable {
+    var id: String = UUID().uuidString
+    var name: String        // user-visible name, e.g. "Bambu P2S"
+    var nasURL: String      // base URL of the NAS bridge for this printer
+    var apiKey: String      // API key for this printer's NAS
+    var notes: String = ""
 }
 
 // MARK: - Color Extension

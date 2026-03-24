@@ -322,8 +322,14 @@ struct PrintHistoryCard: View {
                             .font(.caption).foregroundColor(.secondary)
                     }
                     Spacer()
-                    Text("\(Int(job.weightUsedG))g")
-                        .font(.subheadline).fontWeight(.bold)
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text("\(Int(job.weightUsedG))g")
+                            .font(.subheadline).fontWeight(.bold)
+                        if let cost = job.costEUR {
+                            Text(String(format: "€%.3f", cost))
+                                .font(.caption2).foregroundColor(.secondary)
+                        }
+                    }
                 }
                 Divider()
             }

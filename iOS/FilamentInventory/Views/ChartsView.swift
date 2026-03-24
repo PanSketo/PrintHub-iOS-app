@@ -23,7 +23,6 @@ struct SpendChartCard: View {
 
     // Group purchases by month
     var monthlySpend: [(label: String, amount: Double)] {
-        let cal = Calendar.current
         var grouped: [String: Double] = [:]
         let fmt = DateFormatter()
         fmt.dateFormat = "MMM yy"
