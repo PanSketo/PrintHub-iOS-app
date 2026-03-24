@@ -31,6 +31,41 @@ struct Filament: Identifiable, Codable, Hashable {
     var bedTempMax: Int?
     var productDescription: String?
 
+    // Custom decoder: older stored records may be missing fields that were added later.
+    // Using decodeIfPresent with fallback to the default value prevents keyNotFound errors
+    // when the app schema has evolved beyond what's stored on the NAS.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        // Core fields that have always been present
+        brand            = try c.decode(String.self,           forKey: .brand)
+        type             = try c.decode(FilamentType.self,     forKey: .type)
+        color            = try c.decode(FilamentColor.self,    forKey: .color)
+        totalWeightG     = try c.decode(Double.self,           forKey: .totalWeightG)
+        remainingWeightG = try c.decode(Double.self,           forKey: .remainingWeightG)
+        pricePaid        = try c.decode(Double.self,           forKey: .pricePaid)
+        purchaseDate     = try c.decode(Date.self,             forKey: .purchaseDate)
+        stockStatus      = try c.decode(StockStatus.self,      forKey: .stockStatus)
+        // Fields that may be absent in records stored by older app versions
+        id           = (try? c.decodeIfPresent(String.self,       forKey: .id))           ?? UUID().uuidString
+        sku          = (try? c.decodeIfPresent(String.self,       forKey: .sku))          ?? ""
+        barcode      = (try? c.decodeIfPresent(String.self,       forKey: .barcode))      ?? ""
+        currency     = (try? c.decodeIfPresent(String.self,       forKey: .currency))     ?? "EUR"
+        notes        = (try? c.decodeIfPresent(String.self,       forKey: .notes))        ?? ""
+        diameter     = (try? c.decodeIfPresent(Double.self,       forKey: .diameter))     ?? 1.75
+        lastUpdated  = (try? c.decodeIfPresent(Date.self,         forKey: .lastUpdated))  ?? Date()
+        printJobs    = (try? c.decodeIfPresent([PrintJob].self,   forKey: .printJobs))    ?? []
+        priceHistory = (try? c.decodeIfPresent([PriceEntry].self, forKey: .priceHistory)) ?? []
+        // Explicitly optional fields
+        imageURL           = try? c.decodeIfPresent(String.self, forKey: .imageURL)
+        brandLogoURL       = try? c.decodeIfPresent(String.self, forKey: .brandLogoURL)
+        reorderURL         = try? c.decodeIfPresent(String.self, forKey: .reorderURL)
+        printTempMin       = try? c.decodeIfPresent(Int.self,    forKey: .printTempMin)
+        printTempMax       = try? c.decodeIfPresent(Int.self,    forKey: .printTempMax)
+        bedTempMin         = try? c.decodeIfPresent(Int.self,    forKey: .bedTempMin)
+        bedTempMax         = try? c.decodeIfPresent(Int.self,    forKey: .bedTempMax)
+        productDescription = try? c.decodeIfPresent(String.self, forKey: .productDescription)
+    }
+
     var usedWeightG: Double {
         totalWeightG - remainingWeightG
     }
@@ -148,6 +183,14 @@ struct PriceEntry: Identifiable, Codable, Hashable {
     var price: Double
     var date: Date
     var notes: String = ""
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        price = try c.decode(Double.self, forKey: .price)
+        date  = try c.decode(Date.self,   forKey: .date)
+        id    = (try? c.decodeIfPresent(String.self, forKey: .id))    ?? UUID().uuidString
+        notes = (try? c.decodeIfPresent(String.self, forKey: .notes)) ?? ""
+    }
 }
 
 // MARK: - Print Job
@@ -160,6 +203,18 @@ struct PrintJob: Identifiable, Codable, Hashable {
     var date: Date
     var notes: String = ""
     var success: Bool = true
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        filamentId  = try c.decode(String.self, forKey: .filamentId)
+        printName   = try c.decode(String.self, forKey: .printName)
+        weightUsedG = try c.decode(Double.self, forKey: .weightUsedG)
+        date        = try c.decode(Date.self,   forKey: .date)
+        id          = (try? c.decodeIfPresent(String.self,      forKey: .id))       ?? UUID().uuidString
+        notes       = (try? c.decodeIfPresent(String.self,      forKey: .notes))    ?? ""
+        success     = (try? c.decodeIfPresent(Bool.self,        forKey: .success))  ?? true
+        duration    = try? c.decodeIfPresent(TimeInterval.self, forKey: .duration)
+    }
 }
 
 // MARK: - Color Extension

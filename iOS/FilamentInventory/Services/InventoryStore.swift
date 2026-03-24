@@ -58,7 +58,23 @@ class InventoryStore: ObservableObject {
                 await backfillMissingImages(fetchedFilaments)
             } catch {
                 await MainActor.run {
-                    self.errorMessage = error.localizedDescription
+                    // Surface detailed decoding errors so schema mismatches are diagnosable
+                    if let de = error as? DecodingError {
+                        switch de {
+                        case .keyNotFound(let key, _):
+                            self.errorMessage = "Sync failed: missing field '\(key.stringValue)'"
+                        case .valueNotFound(_, let ctx):
+                            self.errorMessage = "Sync failed: null value — \(ctx.debugDescription)"
+                        case .typeMismatch(_, let ctx):
+                            self.errorMessage = "Sync failed: type mismatch — \(ctx.debugDescription)"
+                        case .dataCorrupted(let ctx):
+                            self.errorMessage = "Sync failed: bad data — \(ctx.debugDescription)"
+                        @unknown default:
+                            self.errorMessage = error.localizedDescription
+                        }
+                    } else {
+                        self.errorMessage = error.localizedDescription
+                    }
                     self.isLoading = false
                 }
             }
