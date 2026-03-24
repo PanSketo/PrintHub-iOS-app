@@ -15,7 +15,7 @@ services:
       - "3456:3456"
     environment:
       - PORT=3456
-      - API_KEY=your-super-secret-api-key-change-this
+      - API_KEY=34jgkJkgosidksofj0948jdPNT
       - DB_PATH=/app/data/filaments.db
       - PRINTER_IP=192.168.1.20
       - PRINTER_SERIAL=22E8BJ610904083
@@ -44,7 +44,7 @@ services:
       - PRINTER_SERIAL=22E8BJ610904083
       - PRINTER_ACCESS_CODE=5726da27
       - DB_PATH=/app/data/filaments.db
-      - API_KEY=your-super-secret-api-key-change-this
+      - API_KEY=34jgkJkgosidksofj0948jdPNT
     restart: unless-stopped
     depends_on:
       - filament-backend
