@@ -102,6 +102,8 @@ final class MJPEGStreamer: NSObject, ObservableObject, URLSessionDataDelegate {
             self.isStreaming = false
             if let err = error as NSError?, err.code != NSURLErrorCancelled {
                 self.errorMessage = err.localizedDescription
+            } else if error == nil && self.currentFrame == nil {
+                self.errorMessage = "Camera offline — printer may be off or unreachable from NAS"
             }
         }
     }

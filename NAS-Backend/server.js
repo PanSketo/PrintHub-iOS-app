@@ -72,8 +72,8 @@ function authenticate(req, res, next) {
   next();
 }
 
-// ── Health (public - no auth required for container healthcheck) ─────────────
-app.get('/api/health', (req, res) => {
+// ── Public health (no auth — used by Docker healthcheck and uptime monitors) ──
+app.get('/health', (req, res) => {
   res.json({ status: 'ok', version: '1.0.0', timestamp: new Date().toISOString() });
 });
 
@@ -101,6 +101,11 @@ app.use((req, res, next) => {
 });
 
 app.use(authenticate);
+
+// ── Authenticated health (iOS uses this to verify both connectivity AND API key) ──
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', version: '1.0.0', timestamp: new Date().toISOString() });
+});
 
 // ── Filaments ────────────────────────────────────────────────────────────────
 // GET all filaments

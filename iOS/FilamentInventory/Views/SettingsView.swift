@@ -246,9 +246,15 @@ struct SettingsView: View {
                 // Danger Zone
                 Section {
                     Button("Force Sync from NAS") {
+                        store.errorMessage = nil
                         store.syncFromNAS()
                     }
                     .foregroundColor(.blue)
+                    if let err = store.errorMessage {
+                        Text("❌ \(err)")
+                            .font(.caption)
+                            .foregroundColor(.red)
+                    }
 
                     Button("Reset All Settings", role: .destructive) {
                         showResetAlert = true

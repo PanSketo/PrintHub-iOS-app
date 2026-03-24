@@ -23,7 +23,7 @@ services:
       - BASE_URL=http://pansketo.arcdns.tech:3456
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3456/api/health"]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3456/health"]
       interval: 30s
       timeout: 10s
       retries: 3
