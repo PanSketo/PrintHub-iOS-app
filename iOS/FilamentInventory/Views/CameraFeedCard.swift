@@ -69,6 +69,12 @@ final class MJPEGStreamer: NSObject, ObservableObject, URLSessionDataDelegate {
         switch http.statusCode {
         case 200:
             completionHandler(.allow)
+        case 401:
+            DispatchQueue.main.async {
+                self.isStreaming = false
+                self.errorMessage = "API key incorrect — check Settings"
+            }
+            completionHandler(.cancel)
         case 503:
             DispatchQueue.main.async {
                 self.isStreaming = false

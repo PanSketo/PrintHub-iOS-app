@@ -52,6 +52,21 @@ struct PrinterStatusView: View {
                         // ── Connection banner (always shown once loaded) ──
                         connectionBanner
 
+                        // ── Auth / fetch error banner ─────────────────────
+                        if let msg = error {
+                            HStack(spacing: 10) {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .foregroundColor(.red)
+                                Text(msg)
+                                    .font(.caption)
+                                    .foregroundColor(.primary)
+                            }
+                            .padding(12)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color.red.opacity(0.1))
+                            .cornerRadius(12)
+                        }
+
                         // ── Live printer state (if bridge is running) ─────
                         if let state = printerState?.live {
                             if state.isPrinting || state.isPaused {

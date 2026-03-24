@@ -377,10 +377,6 @@ app.post('/api/images/mirror', (req, res) => {
 // app can display a live feed without needing native RTSP support.
 // Auth via X-API-Key header (same as all other endpoints).
 app.get('/api/camera/stream', (req, res) => {
-  const key = req.headers['x-api-key'];
-  if (!key || key !== API_KEY) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
   if (!PRINTER_IP || !PRINTER_ACCESS_CODE) {
     return res.status(503).json({ error: 'Printer camera not configured — set PRINTER_IP and PRINTER_ACCESS_CODE in docker-compose.yml' });
   }
