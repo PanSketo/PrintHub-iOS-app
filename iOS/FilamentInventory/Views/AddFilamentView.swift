@@ -287,7 +287,7 @@ struct AddFilamentView: View {
                         .disabled(brand.isEmpty || colorName.isEmpty)
                 }
             }
-            .simultaneousGesture(TapGesture().onEnded { focusedField = nil })
+            .scrollDismissesKeyboard(.interactively)
             .sheet(item: $activeSheet) { sheet in
                 switch sheet {
                 case .scanner:
