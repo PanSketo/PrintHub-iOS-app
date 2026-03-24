@@ -1,67 +1,109 @@
 import SwiftUI
 
+// MARK: - Dashboard Card Identifiers
+
+enum DashboardCard: String, CaseIterable, Identifiable {
+    case statsSpools    = "stats_spools"
+    case statsWeight    = "stats_weight"
+    case syncStatus     = "sync_status"
+    case camera         = "camera"
+    case lowStock       = "low_stock"
+    case typeBreakdown  = "type_breakdown"
+    case recentPrints   = "recent_prints"
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .statsSpools:   return "Spools & Spend"
+        case .statsWeight:   return "Weight & Low Stock"
+        case .syncStatus:    return "NAS Status"
+        case .camera:        return "Camera Feed"
+        case .lowStock:      return "Low Stock Alerts"
+        case .typeBreakdown: return "Filament by Type"
+        case .recentPrints:  return "Recent Prints"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .statsSpools:   return "shippingbox.fill"
+        case .statsWeight:   return "scalemass.fill"
+        case .syncStatus:    return "wifi"
+        case .camera:        return "camera.fill"
+        case .lowStock:      return "exclamationmark.triangle.fill"
+        case .typeBreakdown: return "chart.bar.fill"
+        case .recentPrints:  return "printer.fill"
+        }
+    }
+}
+
+// MARK: - Dashboard Layout Store
+
+class DashboardLayoutStore: ObservableObject {
+    private let key = "dashboard_layout_v1"
+
+    struct CardConfig: Codable, Identifiable {
+        var id: String
+        var isVisible: Bool
+    }
+
+    @Published var cards: [CardConfig]
+
+    init() {
+        if let data = UserDefaults.standard.data(forKey: "dashboard_layout_v1"),
+           let saved = try? JSONDecoder().decode([CardConfig].self, from: data) {
+            // Keep stored order/visibility; append any new cards added in future updates
+            var result = saved.filter { DashboardCard(rawValue: $0.id) != nil }
+            let stored = Set(result.map { $0.id })
+            for card in DashboardCard.allCases where !stored.contains(card.rawValue) {
+                result.append(CardConfig(id: card.rawValue, isVisible: true))
+            }
+            self.cards = result
+        } else {
+            self.cards = DashboardCard.allCases.map { CardConfig(id: $0.rawValue, isVisible: true) }
+        }
+    }
+
+    func save() {
+        if let data = try? JSONEncoder().encode(cards) {
+            UserDefaults.standard.set(data, forKey: key)
+        }
+    }
+
+    var visibleCards: [DashboardCard] {
+        cards.compactMap { c in
+            guard c.isVisible, let card = DashboardCard(rawValue: c.id) else { return nil }
+            return card
+        }
+    }
+}
+
+// MARK: - Dashboard View
+
 struct DashboardView: View {
     @EnvironmentObject var store: InventoryStore
     @EnvironmentObject var nasService: NASService
+    @StateObject private var layout = DashboardLayoutStore()
+    @State private var showCustomize = false
 
     var body: some View {
         NavigationView {
             ScrollView {
                 VStack(spacing: 20) {
-                    // Header stats
-                    HStack(spacing: 12) {
-                        StatCard(
-                            title: "Total Spools",
-                            value: "\(store.totalFilaments)",
-                            icon: "shippingbox.fill",
-                            color: .blue
-                        )
-                        StatCard(
-                            title: "Total Spend",
-                            value: String(format: "€%.2f", store.totalSpend),
-                            icon: "eurosign.circle.fill",
-                            color: .green
-                        )
+                    ForEach(layout.visibleCards) { card in
+                        cardView(for: card)
                     }
-
-                    HStack(spacing: 12) {
-                        StatCard(
-                            title: "Weight Left",
-                            value: "\(Int(store.totalWeightRemaining))g",
-                            icon: "scalemass.fill",
-                            color: .purple
-                        )
-                        StatCard(
-                            title: "Low Stock",
-                            value: "\(store.lowStockFilaments.count)",
-                            icon: "exclamationmark.triangle.fill",
-                            color: store.lowStockFilaments.isEmpty ? .gray : .orange
-                        )
-                    }
-
-                    // Sync status
-                    SyncStatusBar()
-
-                    // Live printer camera feed
-                    if nasService.isConfigured {
-                        CameraFeedCard()
-                    }
-
-                    // Low stock alerts
-                    if !store.lowStockFilaments.isEmpty {
-                        LowStockSection()
-                    }
-
-                    // Filament by type breakdown
-                    TypeBreakdownSection()
-
-                    // Recent activity
-                    RecentPrintsSection()
                 }
                 .padding()
             }
             .navigationTitle("Dashboard")
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button { showCustomize = true } label: {
+                        Image(systemName: "slider.horizontal.3")
+                    }
+                }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: { store.syncFromNAS() }) {
                         Image(systemName: "arrow.clockwise")
@@ -69,11 +111,65 @@ struct DashboardView: View {
                 }
             }
             .refreshable { store.syncFromNAS() }
+            .sheet(isPresented: $showCustomize) {
+                DashboardCustomizeSheet(layout: layout)
+            }
+        }
+    }
+
+    @ViewBuilder
+    func cardView(for card: DashboardCard) -> some View {
+        switch card {
+        case .statsSpools:
+            HStack(spacing: 12) {
+                StatCard(
+                    title: "Total Spools",
+                    value: "\(store.totalFilaments)",
+                    icon: "shippingbox.fill",
+                    color: .blue
+                )
+                StatCard(
+                    title: "Total Spend",
+                    value: String(format: "€%.2f", store.totalSpend),
+                    icon: "eurosign.circle.fill",
+                    color: .green
+                )
+            }
+        case .statsWeight:
+            HStack(spacing: 12) {
+                StatCard(
+                    title: "Weight Left",
+                    value: "\(Int(store.totalWeightRemaining))g",
+                    icon: "scalemass.fill",
+                    color: .purple
+                )
+                StatCard(
+                    title: "Low Stock",
+                    value: "\(store.lowStockFilaments.count)",
+                    icon: "exclamationmark.triangle.fill",
+                    color: store.lowStockFilaments.isEmpty ? .gray : .orange
+                )
+            }
+        case .syncStatus:
+            SyncStatusBar()
+        case .camera:
+            if nasService.isConfigured {
+                CameraFeedCard()
+            }
+        case .lowStock:
+            if !store.lowStockFilaments.isEmpty {
+                LowStockSection()
+            }
+        case .typeBreakdown:
+            TypeBreakdownSection()
+        case .recentPrints:
+            RecentPrintsSection()
         }
     }
 }
 
 // MARK: - Stat Card
+
 struct StatCard: View {
     let title: String
     let value: String
@@ -103,6 +199,7 @@ struct StatCard: View {
 }
 
 // MARK: - Sync Status Bar
+
 struct SyncStatusBar: View {
     @EnvironmentObject var nasService: NASService
     @EnvironmentObject var store: InventoryStore
@@ -129,6 +226,7 @@ struct SyncStatusBar: View {
 }
 
 // MARK: - Low Stock Section
+
 struct LowStockSection: View {
     @EnvironmentObject var store: InventoryStore
 
@@ -182,6 +280,7 @@ struct LowStockRow: View {
 }
 
 // MARK: - Type Breakdown Section
+
 struct TypeBreakdownSection: View {
     @EnvironmentObject var store: InventoryStore
 
@@ -216,6 +315,7 @@ struct TypeBreakdownSection: View {
 }
 
 // MARK: - Recent Prints Section
+
 struct RecentPrintsSection: View {
     @EnvironmentObject var store: InventoryStore
 
