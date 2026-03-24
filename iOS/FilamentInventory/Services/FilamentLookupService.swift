@@ -203,55 +203,10 @@ class FilamentLookupService {
         return http.statusCode == 200
     }
 
-    // Strategy 3: Curated real filament spool images from Unsplash/reliable CDNs
-    // These are stable, free-to-use images organised by filament type and approximate colour
+    // Strategy 3: No reliable fallback — return nil so we don't store broken URLs in the DB.
+    // The brand logo (Clearbit) will be shown as a fallback in the UI instead.
     private func curatedFallbackImage(type: String, color: String) -> String? {
-        let t = type.lowercased()
-        let c = color.lowercased()
-
-        // Colour-matched spool images (Unsplash stable URLs)
-        if c.contains("black") || c.contains("dark") {
-            return "https://images.unsplash.com/photo-1612540139150-4b5a9b3b7b5e?w=400&q=80"
-        }
-        if c.contains("white") || c.contains("natural") {
-            return "https://images.unsplash.com/photo-1614064641938-3bbee52942c7?w=400&q=80"
-        }
-        if c.contains("red") || c.contains("scarlet") || c.contains("crimson") {
-            return "https://images.unsplash.com/photo-1586864387789-628af9feed72?w=400&q=80"
-        }
-        if c.contains("blue") || c.contains("navy") || c.contains("cobalt") {
-            return "https://images.unsplash.com/photo-1586864387967-d02ef0a03d80?w=400&q=80"
-        }
-        if c.contains("green") || c.contains("olive") || c.contains("forest") {
-            return "https://images.unsplash.com/photo-1618477461853-cf6ed80faba5?w=400&q=80"
-        }
-        if c.contains("orange") || c.contains("amber") {
-            return "https://images.unsplash.com/photo-1617791160505-6f00504e3519?w=400&q=80"
-        }
-        if c.contains("yellow") || c.contains("gold") {
-            return "https://images.unsplash.com/photo-1617791160536-598cf32026fb?w=400&q=80"
-        }
-        if c.contains("grey") || c.contains("gray") || c.contains("silver") {
-            return "https://images.unsplash.com/photo-1612540139004-a9b3b7b7b5e0?w=400&q=80"
-        }
-        if c.contains("purple") || c.contains("violet") || c.contains("magenta") {
-            return "https://images.unsplash.com/photo-1617791160588-241658642958?w=400&q=80"
-        }
-
-        // Type-based fallback
-        switch t {
-        case _ where t.contains("petg"):
-            return "https://images.unsplash.com/photo-1612540139150-4b5a9b3b7b5e?w=400&q=80"
-        case _ where t.contains("abs"):
-            return "https://images.unsplash.com/photo-1614064641938-3bbee52942c7?w=400&q=80"
-        case _ where t.contains("tpu"):
-            return "https://images.unsplash.com/photo-1586864387789-628af9feed72?w=400&q=80"
-        case _ where t.contains("silk"):
-            return "https://images.unsplash.com/photo-1617791160505-6f00504e3519?w=400&q=80"
-        default:
-            // Generic PLA spool
-            return "https://images.unsplash.com/photo-1586864387789-628af9feed72?w=400&q=80"
-        }
+        return nil
     }
 }
 

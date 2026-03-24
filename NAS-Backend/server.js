@@ -394,6 +394,7 @@ app.get('/api/camera/stream', (req, res) => {
   const ffmpeg = spawn('ffmpeg', [
     '-loglevel', 'error',
     '-rtsp_transport', 'tcp',
+    '-tls_verify', '0',   // Bambu Lab uses a self-signed TLS cert on RTSPS
     '-i', rtspUrl,
     '-f', 'image2pipe',
     '-vcodec', 'mjpeg',
