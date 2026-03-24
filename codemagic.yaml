@@ -100,7 +100,7 @@ workflows:
     publishing:
       email:
         recipients:
-          - your-email@example.com          # ← Change this to your email
+          - ptzelesis@hotmail.com
         notify:
           success: true
           failure: true
