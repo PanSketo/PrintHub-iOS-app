@@ -266,6 +266,8 @@ struct PrinterStatusView: View {
                 self.isLoading = false
             }
         }
+        // Check for new print events on every poll tick (NASService rate-limits to 20 s)
+        await nasService.checkPrintEvents()
     }
 
     func fetchMappings() async {

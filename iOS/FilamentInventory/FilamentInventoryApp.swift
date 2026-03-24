@@ -33,7 +33,10 @@ struct FilamentInventoryApp: App {
         }
         .onChange(of: scenePhase) { phase in
             if phase == .active && nasService.isConfigured {
-                Task { await nasService.autoConnect() }
+                Task {
+                    await nasService.autoConnect()
+                    await nasService.checkPrintEvents()
+                }
             }
         }
     }

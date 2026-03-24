@@ -67,6 +67,14 @@ db.exec(`
     data TEXT NOT NULL,
     created_at TEXT DEFAULT (datetime('now'))
   );
+
+  CREATE TABLE IF NOT EXISTS printer_events (
+    id TEXT PRIMARY KEY,
+    event_type TEXT NOT NULL,   -- 'print_started', 'print_completed', 'print_failed'
+    print_name TEXT,
+    reason TEXT,                -- NULL unless event_type = 'print_failed'
+    created_at TEXT DEFAULT (datetime('now'))
+  );
 `);
 
 // ── State tracking ────────────────────────────────────────────────────────────
@@ -79,6 +87,7 @@ let mqttClient = null;
 let reconnectTimer = null;
 let lastFilamentUsedReport = null;  // mc_print_filament_used grams from Bambu at end of print
 let lastActiveSlotKey = null;       // most recent active AMS slot key during a print
+let lastPrintError = null;          // print_error code from Bambu (non-zero when print fails)
 
 // ── Helper: save printer state to DB (for iOS app to poll) ───────────────────
 function savePrinterState(state) {
@@ -95,6 +104,18 @@ function savePrinterState(state) {
 function getPrinterState(key) {
   const row = db.prepare('SELECT value FROM printer_state WHERE key = ?').get(key);
   return row ? JSON.parse(row.value) : null;
+}
+
+// ── Helper: record a printer lifecycle event (for iOS push polling) ───────────
+function insertPrinterEvent(eventType, printName, reason) {
+  try {
+    db.prepare(`
+      INSERT INTO printer_events (id, event_type, print_name, reason, created_at)
+      VALUES (?, ?, ?, ?, datetime('now'))
+    `).run(crypto.randomUUID(), eventType, printName || '', reason || null);
+  } catch (err) {
+    console.warn('Could not insert printer event:', err.message);
+  }
 }
 
 // ── Helper: get AMS slot → filament mapping ───────────────────────────────────
@@ -227,6 +248,11 @@ function processPrinterMessage(payload) {
       console.log(`📊 Filament used report from printer: ${lastFilamentUsedReport}g`);
     }
 
+    // ── Capture print error code (non-zero when the printer reports a fault) ─
+    if (print.print_error !== undefined && print.print_error !== 0) {
+      lastPrintError = print.print_error;
+    }
+
     savePrinterState({ live: liveState });
 
     // Track print name
@@ -250,16 +276,21 @@ function processPrinterMessage(payload) {
         });
         lastFilamentUsedReport = null;
         lastActiveSlotKey = null;
+        lastPrintError = null;
         console.log(`▶️  Print started: "${currentPrintName}"`);
+        insertPrinterEvent('print_started', currentPrintName, null);
       }
 
       // Print just finished successfully
       if (currentState === 'FINISH' && lastPrintState === 'RUNNING') {
+        insertPrinterEvent('print_completed', currentPrintName, null);
         handlePrintComplete(false);
       }
 
       // Print failed
       if (currentState === 'FAILED' && lastPrintState === 'RUNNING') {
+        const reason = lastPrintError ? `Error code: ${lastPrintError}` : null;
+        insertPrinterEvent('print_failed', currentPrintName, reason);
         handlePrintComplete(true);
       }
 
@@ -349,6 +380,7 @@ function handlePrintComplete(failed) {
   weightAtStart = {};
   lastFilamentUsedReport = null;
   lastActiveSlotKey = null;
+  lastPrintError = null;
 }
 
 // ── Connect to printer MQTT ───────────────────────────────────────────────────

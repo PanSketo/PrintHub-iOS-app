@@ -53,6 +53,13 @@ db.pragma('journal_mode = WAL');
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL,
     updated_at TEXT DEFAULT (datetime('now'))
+  )`,
+  `CREATE TABLE IF NOT EXISTS printer_events (
+    id TEXT PRIMARY KEY,
+    event_type TEXT NOT NULL,
+    print_name TEXT,
+    reason TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
   )`
 ].forEach(sql => {
   try { db.exec(sql); } catch(e) { console.error('Table migration error:', e.message); }
@@ -299,6 +306,45 @@ app.get('/api/printer/state', (req, res) => {
   } catch (err) {
     // Always return valid JSON — never a 500 — so iOS shows offline state gracefully
     res.json({ connected: false, live: null, bridge_active: false, error: err.message });
+  }
+});
+
+// ── Printer Events ────────────────────────────────────────────────────────────
+// GET print lifecycle events (started / completed / failed) since a given timestamp.
+// iOS polls this to fire local notifications without needing APNs.
+// ?since=<ISO8601>  — returns events newer than that timestamp, oldest first (max 50)
+// (no since param)  — returns the 10 most recent events, newest first
+app.get('/api/printer/events', (req, res) => {
+  try {
+    const { since } = req.query;
+    let rows;
+    if (since) {
+      // Strip trailing Z if present — SQLite datetime() stores without it
+      const sinceClean = since.replace('Z', '').replace('T', ' ');
+      rows = db.prepare(`
+        SELECT id, event_type, print_name, reason, created_at
+        FROM printer_events
+        WHERE created_at > datetime(?)
+        ORDER BY created_at ASC
+        LIMIT 50
+      `).all(sinceClean);
+    } else {
+      rows = db.prepare(`
+        SELECT id, event_type, print_name, reason, created_at
+        FROM printer_events
+        ORDER BY created_at DESC
+        LIMIT 10
+      `).all();
+    }
+    res.json(rows.map(r => ({
+      id: r.id,
+      eventType: r.event_type,
+      printName: r.print_name || '',
+      reason: r.reason || null,
+      createdAt: r.created_at.replace(' ', 'T') + 'Z'
+    })));
+  } catch (err) {
+    res.json([]);
   }
 });
 

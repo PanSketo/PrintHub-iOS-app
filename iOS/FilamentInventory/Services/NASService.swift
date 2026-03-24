@@ -171,6 +171,66 @@ class NASService: ObservableObject {
         decoder.dateDecodingStrategy = .iso8601
         return try decoder.decode([PrintJob].self, from: data)
     }
+    // MARK: - Printer Events
+    struct PrinterEvent: Codable {
+        let id: String
+        let eventType: String
+        let printName: String
+        let reason: String?
+        let createdAt: Date
+    }
+
+    /// Fetches print lifecycle events (started / completed / failed) newer than `since`.
+    func fetchPrinterEvents(since: Date) async throws -> [PrinterEvent] {
+        var components = URLComponents(string: "\(baseURL)/api/printer/events")
+        let formatter = ISO8601DateFormatter()
+        components?.queryItems = [URLQueryItem(name: "since", value: formatter.string(from: since))]
+        guard let url = components?.url else { throw NASError.invalidURL }
+        var request = URLRequest(url: url)
+        request.addValue(apiKey, forHTTPHeaderField: "X-API-Key")
+        let (data, response) = try await session.data(for: request)
+        guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw NASError.serverError }
+        return try NASService.makeDateDecoder().decode([PrinterEvent].self, from: data)
+    }
+
+    /// Polls for new print events and fires local notifications. Rate-limited to once per 20 s.
+    /// Call this from the Printer tab polling loop AND whenever the app returns to foreground.
+    private var lastEventCheckAt: Date = .distantPast
+    private let lastEventCheckKey = "last_print_event_check_iso"
+
+    func checkPrintEvents() async {
+        guard isConfigured, isConnected else { return }
+        guard Date().timeIntervalSince(lastEventCheckAt) >= 20 else { return }
+        lastEventCheckAt = Date()
+
+        let defaults = UserDefaults.standard
+        let formatter = ISO8601DateFormatter()
+
+        guard let sinceIso = defaults.string(forKey: lastEventCheckKey),
+              let since = formatter.date(from: sinceIso) else {
+            // First launch — set cursor to now; don't notify for historical events
+            defaults.set(formatter.string(from: Date()), forKey: lastEventCheckKey)
+            return
+        }
+
+        do {
+            let events = try await fetchPrinterEvents(since: since)
+            defaults.set(formatter.string(from: Date()), forKey: lastEventCheckKey)
+            for event in events {
+                switch event.eventType {
+                case "print_started":
+                    NotificationManager.shared.notifyPrintStarted(printName: event.printName)
+                case "print_completed":
+                    NotificationManager.shared.notifyPrintCompleted(printName: event.printName)
+                case "print_failed":
+                    NotificationManager.shared.notifyPrintFailed(printName: event.printName, reason: event.reason)
+                default:
+                    break
+                }
+            }
+        } catch { }
+    }
+
     // MARK: - Printer State
     func fetchPrinterState() async throws -> PrinterState {
         guard let url = URL(string: "\(baseURL)/api/printer/state") else {
