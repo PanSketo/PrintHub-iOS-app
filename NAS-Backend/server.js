@@ -439,7 +439,7 @@ app.get('/api/camera/stream', (req, res) => {
     '-loglevel', 'warning',
     '-rtsp_transport', 'tcp',
     '-tls_verify', '0',           // Bambu Lab uses a self-signed TLS cert on RTSPS
-    '-stimeout', '10000000',      // 10 s socket timeout — fail fast if printer unreachable
+    '-timeout', '10000000',       // 10 s socket timeout — fail fast if printer unreachable
     '-allowed_media_types', 'video',
     '-i', rtspUrl,
     '-vf', 'scale=1920:1080',
