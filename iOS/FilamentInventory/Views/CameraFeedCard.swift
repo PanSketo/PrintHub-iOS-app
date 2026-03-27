@@ -152,6 +152,9 @@ final class MJPEGStreamer: NSObject, ObservableObject, URLSessionDataDelegate {
 struct CameraFeedCard: View {
     @EnvironmentObject var nasService: NASService
     @StateObject private var streamer = MJPEGStreamer()
+    @State private var lightOn: Bool = false
+    @State private var lightKnown: Bool = false
+    @State private var lightBusy: Bool = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -160,13 +163,38 @@ struct CameraFeedCard: View {
             controlBar
         }
         .glassCard()
-        .onAppear { streamer.start(baseURL: nasService.baseURL, apiKey: nasService.apiKey) }
+        .onAppear {
+            streamer.start(baseURL: nasService.baseURL, apiKey: nasService.apiKey)
+            Task { await refreshLightState() }
+        }
         .onDisappear { streamer.stop() }
         .onChange(of: nasService.isConnected) { connected in
-            // Restart the stream if the NAS (re)connects while the card is visible
             if connected && !streamer.isStreaming {
                 streamer.start(baseURL: nasService.baseURL, apiKey: nasService.apiKey)
             }
+            if connected { Task { await refreshLightState() } }
+        }
+    }
+
+    private func refreshLightState() async {
+        if let on = await nasService.fetchLightState() {
+            lightOn = on
+            lightKnown = true
+        }
+    }
+
+    private func toggleLight() {
+        guard !lightBusy else { return }
+        let newState = !lightOn
+        lightOn = newState   // optimistic
+        lightBusy = true
+        Task {
+            do {
+                try await nasService.setLight(on: newState)
+            } catch {
+                lightOn = !newState  // revert on failure
+            }
+            lightBusy = false
         }
     }
 
@@ -240,11 +268,10 @@ struct CameraFeedCard: View {
     }
 
     private var controlBar: some View {
-        HStack {
+        HStack(spacing: 10) {
+            // Play / Stop
             if streamer.isStreaming {
-                Button {
-                    streamer.stop()
-                } label: {
+                Button { streamer.stop() } label: {
                     Label("Stop", systemImage: "stop.fill")
                         .font(.subheadline.weight(.semibold))
                         .foregroundColor(.red)
@@ -254,9 +281,7 @@ struct CameraFeedCard: View {
                         .cornerRadius(10)
                 }
             } else {
-                Button {
-                    streamer.start(baseURL: nasService.baseURL, apiKey: nasService.apiKey)
-                } label: {
+                Button { streamer.start(baseURL: nasService.baseURL, apiKey: nasService.apiKey) } label: {
                     Label("Play", systemImage: "play.fill")
                         .font(.subheadline.weight(.semibold))
                         .foregroundColor(.white)
@@ -266,6 +291,23 @@ struct CameraFeedCard: View {
                         .cornerRadius(10)
                 }
             }
+
+            // Chamber light toggle
+            Button { toggleLight() } label: {
+                ZStack {
+                    if lightBusy {
+                        ProgressView().tint(lightOn ? .yellow : .white)
+                    } else {
+                        Image(systemName: lightOn ? "lightbulb.fill" : "lightbulb")
+                            .font(.title3)
+                            .foregroundColor(lightOn ? .yellow : .white.opacity(lightKnown ? 0.6 : 0.25))
+                    }
+                }
+                .frame(width: 44, height: 44)
+                .background(lightOn ? Color.yellow.opacity(0.15) : Color.white.opacity(0.08))
+                .cornerRadius(10)
+            }
+            .disabled(lightBusy || !nasService.isConnected)
         }
         .padding()
     }
