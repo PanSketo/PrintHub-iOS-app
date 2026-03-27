@@ -337,6 +337,8 @@ app.post('/api/printer/light', (req, res) => {
     return res.status(503).json({ error: 'Printer not configured' });
   }
 
+  console.log(`[light] Connecting to printer MQTT to turn light ${on ? 'ON' : 'OFF'}`);
+
   const client = mqtt.connect(`mqtts://${PRINTER_IP}:8883`, {
     username: 'bblp',
     password: PRINTER_ACCESS_CODE,
@@ -346,14 +348,27 @@ app.post('/api/printer/light', (req, res) => {
     reconnectPeriod: 0
   });
 
-  const done = (err) => { try { client.end(true); } catch (_) {} if (!res.headersSent) err ? res.status(500).json({ error: err.message }) : res.json({ ok: true, on }); };
-  const timer = setTimeout(() => done(new Error('MQTT connection timed out')), 12000);
+  let settled = false;
+  const settle = (err) => {
+    if (settled) return;
+    settled = true;
+    if (err) {
+      console.error('[light] Error:', err.message);
+      try { client.end(true); } catch (_) {}
+      if (!res.headersSent) res.status(500).json({ error: err.message });
+    } else {
+      if (!res.headersSent) res.json({ ok: true, on });
+    }
+  };
+
+  const timer = setTimeout(() => settle(new Error('MQTT connection timed out')), 12000);
 
   client.on('connect', () => {
+    console.log('[light] MQTT connected, publishing ledctrl command');
     clearTimeout(timer);
     const cmd = {
       system: {
-        sequence_id: String(Date.now()),
+        sequence_id: '1001',
         command: 'ledctrl',
         led_node: 'chamber_light',
         led_mode: on ? 'on' : 'off',
@@ -364,15 +379,16 @@ app.post('/api/printer/light', (req, res) => {
       }
     };
     client.publish(`device/${PRINTER_SERIAL}/request`, JSON.stringify(cmd), () => {
-      // Optimistically persist the new state so the next GET reflects it immediately
+      console.log('[light] Command published, closing connection');
       db.prepare(`INSERT INTO printer_state (key, value, updated_at) VALUES ('chamber_light', ?, datetime('now'))
         ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')`)
         .run(JSON.stringify(on));
-      done(null);
+      // Give the packet time to flush before closing
+      setTimeout(() => { try { client.end(); } catch (_) {} settle(null); }, 300);
     });
   });
 
-  client.on('error', (err) => { clearTimeout(timer); done(err); });
+  client.on('error', (err) => { clearTimeout(timer); settle(err); });
 });
 
 // ── Printer Events ────────────────────────────────────────────────────────────
