@@ -253,6 +253,14 @@ function processPrinterMessage(payload) {
       lastPrintError = print.print_error;
     }
 
+    // ── Track chamber light state ─────────────────────────────────────────────
+    if (print.lights_report) {
+      const chamberLight = print.lights_report.find(l => l.node === 'chamber_light');
+      if (chamberLight) {
+        savePrinterState({ chamber_light: chamberLight.mode === 'on' });
+      }
+    }
+
     savePrinterState({ live: liveState });
 
     // Track print name

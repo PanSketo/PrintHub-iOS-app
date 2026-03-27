@@ -351,6 +351,31 @@ class NASService: ObservableObject {
         return localURL
     }
 
+    // MARK: - Chamber Light
+    func fetchLightState() async -> Bool? {
+        guard let url = URL(string: "\(baseURL)/api/printer/light") else { return nil }
+        var request = URLRequest(url: url)
+        request.addValue(apiKey, forHTTPHeaderField: "X-API-Key")
+        guard let (data, response) = try? await session.data(for: request),
+              (response as? HTTPURLResponse)?.statusCode == 200,
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let known = json["known"] as? Bool, known,
+              let on = json["on"] as? Bool else { return nil }
+        return on
+    }
+
+    func setLight(on: Bool) async throws {
+        guard let url = URL(string: "\(baseURL)/api/printer/light") else { throw NASError.invalidURL }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.addValue(apiKey, forHTTPHeaderField: "X-API-Key")
+        request.httpBody = try JSONSerialization.data(withJSONObject: ["on": on])
+        request.timeoutInterval = 15
+        let (_, response) = try await session.data(for: request)
+        guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw NASError.serverError }
+    }
+
     func deleteAMSMapping(slotKey: String, using config: PrinterConfig? = nil) async throws {
         let base = config?.nasURL ?? baseURL
         let key  = config?.apiKey ?? apiKey
