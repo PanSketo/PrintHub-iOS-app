@@ -6,12 +6,14 @@ const fs = require('fs');
 const https = require('https');
 const http = require('http');
 const { spawn } = require('child_process');
+const mqtt = require('mqtt');
 
 const app = express();
 const PORT = process.env.PORT || 3456;
 const API_KEY = process.env.API_KEY || 'change-this-to-a-strong-random-key';
 const PRINTER_IP           = process.env.PRINTER_IP           || '';
 const PRINTER_ACCESS_CODE  = process.env.PRINTER_ACCESS_CODE  || '';
+const PRINTER_SERIAL       = process.env.PRINTER_SERIAL       || '';
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'data', 'filaments.db');
 // Optional: set to your DDNS / public URL so mirrored image URLs work outside the home network.
 // Example: BASE_URL=http://myhome.ddns.net:3456
@@ -314,6 +316,65 @@ app.get('/api/printer/state', (req, res) => {
   }
 });
 
+// ── Printer Chamber Light ─────────────────────────────────────────────────────
+// GET  /api/printer/light   — returns { on: bool, known: bool }
+// POST /api/printer/light   — body: { "on": bool } — sends ledctrl via MQTT
+
+app.get('/api/printer/light', (req, res) => {
+  try {
+    const row = db.prepare("SELECT value FROM printer_state WHERE key = 'chamber_light'").get();
+    if (!row) return res.json({ on: false, known: false });
+    res.json({ on: JSON.parse(row.value) === true, known: true });
+  } catch (err) {
+    res.json({ on: false, known: false });
+  }
+});
+
+app.post('/api/printer/light', (req, res) => {
+  const on = req.body?.on;
+  if (typeof on !== 'boolean') return res.status(400).json({ error: 'Body must be { "on": true/false }' });
+  if (!PRINTER_IP || !PRINTER_ACCESS_CODE || !PRINTER_SERIAL) {
+    return res.status(503).json({ error: 'Printer not configured' });
+  }
+
+  const client = mqtt.connect(`mqtts://${PRINTER_IP}:8883`, {
+    username: 'bblp',
+    password: PRINTER_ACCESS_CODE,
+    clientId: `filament_light_${crypto.randomBytes(4).toString('hex')}`,
+    rejectUnauthorized: false,
+    connectTimeout: 10000,
+    reconnectPeriod: 0
+  });
+
+  const done = (err) => { try { client.end(true); } catch (_) {} if (!res.headersSent) err ? res.status(500).json({ error: err.message }) : res.json({ ok: true, on }); };
+  const timer = setTimeout(() => done(new Error('MQTT connection timed out')), 12000);
+
+  client.on('connect', () => {
+    clearTimeout(timer);
+    const cmd = {
+      system: {
+        sequence_id: String(Date.now()),
+        command: 'ledctrl',
+        led_node: 'chamber_light',
+        led_mode: on ? 'on' : 'off',
+        led_on_time: 500,
+        led_off_time: 500,
+        loop_times: 1,
+        interval_time: 1000
+      }
+    };
+    client.publish(`device/${PRINTER_SERIAL}/request`, JSON.stringify(cmd), () => {
+      // Optimistically persist the new state so the next GET reflects it immediately
+      db.prepare(`INSERT INTO printer_state (key, value, updated_at) VALUES ('chamber_light', ?, datetime('now'))
+        ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')`)
+        .run(JSON.stringify(on));
+      done(null);
+    });
+  });
+
+  client.on('error', (err) => { clearTimeout(timer); done(err); });
+});
+
 // ── Printer Events ────────────────────────────────────────────────────────────
 // GET print lifecycle events (started / completed / failed) since a given timestamp.
 // iOS polls this to fire local notifications without needing APNs.
@@ -439,13 +500,14 @@ app.get('/api/camera/stream', (req, res) => {
     '-loglevel', 'warning',
     '-rtsp_transport', 'tcp',
     '-tls_verify', '0',           // Bambu Lab uses a self-signed TLS cert on RTSPS
-    '-stimeout', '10000000',      // 10 s socket timeout — fail fast if printer unreachable
+    '-timeout', '10000000',       // 10 s socket timeout — fail fast if printer unreachable
     '-allowed_media_types', 'video',
     '-i', rtspUrl,
+    '-vf', 'scale=1920:1080,deflicker=size=10:mode=am',
     '-f', 'image2pipe',
     '-vcodec', 'mjpeg',
     '-q:v', '5',   // JPEG quality 1-31, lower = better
-    '-r', '5',     // 5 fps — balanced quality vs NAS bandwidth
+    '-r', '30',    // 30 fps — full framerate at 1920x1080
     'pipe:1'
   ]);
 
