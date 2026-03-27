@@ -442,7 +442,7 @@ app.get('/api/camera/stream', (req, res) => {
     '-timeout', '10000000',       // 10 s socket timeout — fail fast if printer unreachable
     '-allowed_media_types', 'video',
     '-i', rtspUrl,
-    '-vf', 'scale=1920:1080,deflicker=size=5:mode=am',
+    '-vf', 'scale=1920:1080,tmix=frames=7,deflicker=size=10:mode=am',
     '-f', 'image2pipe',
     '-vcodec', 'mjpeg',
     '-q:v', '5',   // JPEG quality 1-31, lower = better
