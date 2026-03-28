@@ -35,12 +35,33 @@ jobs:
             -configuration Release \
             -destination "generic/platform=iOS" \
             -archivePath "$RUNNER_TEMP/FilamentInventory.xcarchive" \
-            CODE_SIGN_IDENTITY="-" \
-            CODE_SIGNING_REQUIRED=YES \
-            CODE_SIGNING_ALLOWED=YES \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
             AD_HOC_CODE_SIGNING_ALLOWED=YES \
             clean archive
           test -d "$RUNNER_TEMP/FilamentInventory.xcarchive" && echo "✅ Archive created" || (echo "❌ Archive missing" && exit 1)
+
+      - name: Inject App Groups entitlements (ad-hoc codesign)
+        run: |
+          APP="$RUNNER_TEMP/FilamentInventory.xcarchive/Products/Applications/FilamentInventory.app"
+          WIDGET="$APP/PlugIns/FilamentWidget.appex"
+
+          echo "Injecting entitlements into main app..."
+          codesign --force --sign - \
+            --entitlements iOS/FilamentInventory/FilamentInventory.entitlements \
+            "$APP"
+
+          echo "Injecting entitlements into widget..."
+          codesign --force --sign - \
+            --entitlements iOS/FilamentWidget/FilamentWidget.entitlements \
+            "$WIDGET"
+
+          echo "✅ Verifying entitlements..."
+          codesign -d --entitlements - "$APP" 2>/dev/null | grep -q "application-groups" \
+            && echo "✅ App entitlements embedded" || echo "⚠️ App entitlements missing"
+          codesign -d --entitlements - "$WIDGET" 2>/dev/null | grep -q "application-groups" \
+            && echo "✅ Widget entitlements embedded" || echo "⚠️ Widget entitlements missing"
 
       - name: Verify widget is embedded
         run: |
