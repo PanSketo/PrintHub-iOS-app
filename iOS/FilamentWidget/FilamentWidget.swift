@@ -156,11 +156,23 @@ struct FilamentWidgetView: View {
             }
         }
         .padding()
-        .containerBackground(.fill.tertiary, for: .widget)
+        .modifier(WidgetBackgroundModifier())
     }
 
     private func formatMinutes(_ mins: Int) -> String {
         mins < 60 ? "\(mins)m" : "\(mins / 60)h \(mins % 60)m"
+    }
+}
+
+// MARK: - iOS 16/17 background compatibility
+
+private struct WidgetBackgroundModifier: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 17.0, *) {
+            content.containerBackground(.fill.tertiary, for: .widget)
+        } else {
+            content.background(Color(.systemBackground))
+        }
     }
 }
 
