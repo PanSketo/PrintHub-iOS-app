@@ -34,6 +34,8 @@
 		AA11BB22CC33DD44EE55FF01 /* PrinterManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB11CC22DD33EE44FF550011 /* PrinterManager.swift */; };
 		CC11DD22EE33FF44AA550022 /* CloudBackupService.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD11EE22FF33AA44BB550022 /* CloudBackupService.swift */; };
 		EE11FF22AA33BB44CC550033 /* FilamentIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF11AA22BB33CC44DD550033 /* FilamentIntents.swift */; };
+		FW0001AABB11CC22DD33EE04 /* FilamentWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = FW0001AABB11CC22DD33EE01 /* FilamentWidget.swift */; };
+		FW0001AABB11CC22DD33EE05 /* FilamentWidget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = FW0001AABB11CC22DD33EE02 /* FilamentWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -66,10 +68,44 @@
 		DD11EE22FF33AA44BB550022 /* CloudBackupService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudBackupService.swift; sourceTree = "<group>"; };
 		FF11AA22BB33CC44DD550033 /* FilamentIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilamentIntents.swift; sourceTree = "<group>"; };
 		620567A71E5CA3AB8765C812 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		FW0001AABB11CC22DD33EE01 /* FilamentWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilamentWidget.swift; sourceTree = "<group>"; };
+		FW0001AABB11CC22DD33EE02 /* FilamentWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = FilamentWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		FW0001AABB11CC22DD33EE03 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXContainerItemProxy section */
+		FW0001AABB11CC22DD33EE15 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 98F54143AB4E86B28C3AFEE0 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = FW0001AABB11CC22DD33EE08;
+			remoteInfo = FilamentWidget;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		FW0001AABB11CC22DD33EE07 /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				FW0001AABB11CC22DD33EE05 /* FilamentWidget.appex in Embed App Extensions */,
+			);
+			name = "Embed App Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		7B8633C7EB6F5CB13673C25D /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FW0001AABB11CC22DD33EE13 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -83,14 +119,25 @@
 			isa = PBXGroup;
 			children = (
 				81B6A57DEDA76992CF92A034 /* FilamentInventory */,
+				FW0001AABB11CC22DD33EE06 /* FilamentWidget */,
 				550258979F7021997C570D6F /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		FW0001AABB11CC22DD33EE06 /* FilamentWidget */ = {
+			isa = PBXGroup;
+			children = (
+				FW0001AABB11CC22DD33EE01 /* FilamentWidget.swift */,
+				FW0001AABB11CC22DD33EE03 /* Info.plist */,
+			);
+			path = FilamentWidget;
 			sourceTree = "<group>";
 		};
 		550258979F7021997C570D6F /* Products */ = {
 			isa = PBXGroup;
 			children = (
 				5718BA8B2965F0F686C8E55B /* FilamentInventory.app */,
+				FW0001AABB11CC22DD33EE02 /* FilamentWidget.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -172,15 +219,34 @@
 				E4F78730D65EE9F55E2BAC2F /* Sources */,
 				7B8633C7EB6F5CB13673C25D /* Frameworks */,
 				C52ABA055DA4D0050382EB56 /* Resources */,
+				FW0001AABB11CC22DD33EE07 /* Embed App Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				FW0001AABB11CC22DD33EE16 /* PBXTargetDependency */,
 			);
 			name = FilamentInventory;
 			productName = FilamentInventory;
 			productReference = 5718BA8B2965F0F686C8E55B /* FilamentInventory.app */;
 			productType = "com.apple.product-type.application";
+		};
+		FW0001AABB11CC22DD33EE08 /* FilamentWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FW0001AABB11CC22DD33EE11 /* Build configuration list for PBXNativeTarget "FilamentWidget" */;
+			buildPhases = (
+				FW0001AABB11CC22DD33EE12 /* Sources */,
+				FW0001AABB11CC22DD33EE13 /* Frameworks */,
+				FW0001AABB11CC22DD33EE14 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = FilamentWidget;
+			productName = FilamentWidget;
+			productReference = FW0001AABB11CC22DD33EE02 /* FilamentWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -193,6 +259,9 @@
 				LastUpgradeCheck = 1500;
 				TargetAttributes = {
 					0E8A3AD980EC179856012B7E = {
+						CreatedOnToolsVersion = 15.0;
+					};
+					FW0001AABB11CC22DD33EE08 = {
 						CreatedOnToolsVersion = 15.0;
 					};
 				};
@@ -211,6 +280,7 @@
 			projectRoot = "";
 			targets = (
 				0E8A3AD980EC179856012B7E /* FilamentInventory */,
+				FW0001AABB11CC22DD33EE08 /* FilamentWidget */,
 			);
 		};
 /* End PBXProject section */
@@ -224,9 +294,32 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		FW0001AABB11CC22DD33EE14 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		FW0001AABB11CC22DD33EE16 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = FW0001AABB11CC22DD33EE08 /* FilamentWidget */;
+			targetProxy = FW0001AABB11CC22DD33EE15 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin PBXSourcesBuildPhase section */
+		FW0001AABB11CC22DD33EE12 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FW0001AABB11CC22DD33EE04 /* FilamentWidget.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		E4F78730D65EE9F55E2BAC2F /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -426,6 +519,58 @@
 			};
 			name = Release;
 		};
+		FW0001AABB11CC22DD33EE09 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "";
+				CODE_SIGN_STYLE = Manual;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = FilamentWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.pansketo.filamentinventory.widget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		FW0001AABB11CC22DD33EE10 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "";
+				CODE_SIGN_STYLE = Manual;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = FilamentWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.pansketo.filamentinventory.widget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -443,6 +588,15 @@
 			buildConfigurations = (
 				18DCB30A68F4AFA5DA444758 /* Debug */,
 				4E31F9F05639A422599E8F78 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		FW0001AABB11CC22DD33EE11 /* Build configuration list for PBXNativeTarget "FilamentWidget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				FW0001AABB11CC22DD33EE09 /* Debug */,
+				FW0001AABB11CC22DD33EE10 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
