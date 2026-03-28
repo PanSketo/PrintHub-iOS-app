@@ -107,8 +107,8 @@ struct PrinterStatusView: View {
                         // ── Live printer state (if bridge is running) ─────
                         if let state = printerState?.live {
                             if state.isPrinting || state.isPaused {
-                                PrintProgressCard(state: state)
-                                TemperatureCard(state: state)
+                                PrintProgressCard(state: state, onCommand: sendCommand)
+                                TemperatureCard(state: state, onCommand: sendCommand)
                             } else {
                                 idleCard(state: state)
                             }
@@ -313,6 +313,10 @@ struct PrinterStatusView: View {
         } catch { }
     }
 
+    func sendCommand(_ command: String, value: String?) async throws {
+        try await nasService.sendPrinterCommand(command, value: value, using: printerConfig)
+    }
+
     func formatTimestamp(_ ts: String) -> String? {
         let f = ISO8601DateFormatter()
         guard let date = f.date(from: ts) else { return nil }
@@ -325,6 +329,11 @@ struct PrinterStatusView: View {
 // MARK: - Print Progress Card
 struct PrintProgressCard: View {
     let state: PrinterLiveState
+    let onCommand: (String, String?) async throws -> Void
+
+    @State private var showStopConfirm = false
+    @State private var showSpeedPicker = false
+    @State private var isBusy = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -358,7 +367,6 @@ struct PrintProgressCard: View {
                             colors: [state.statusColor.opacity(0.7), state.statusColor],
                             startPoint: .leading, endPoint: .trailing))
                         .frame(width: geo.size.width * CGFloat(state.progress) / 100)
-                    // Animated shimmer when printing
                     if state.isPrinting {
                         RoundedRectangle(cornerRadius: 6)
                             .fill(Color.white.opacity(0.3))
@@ -370,14 +378,74 @@ struct PrintProgressCard: View {
             }
             .frame(height: 16)
 
-            // Stats row
+            // Stats row — speed badge is tappable
             HStack {
                 statBadge(icon: "clock", value: formatMinutes(state.remainingMinutes), label: "remaining")
                 Spacer()
                 statBadge(icon: "square.3.layers.3d", value: "\(state.layerCurrent)/\(state.layerTotal)", label: "layers")
                 Spacer()
-                statBadge(icon: "speedometer", value: state.speedLabel, label: "speed")
+                Button { showSpeedPicker = true } label: {
+                    VStack(spacing: 3) {
+                        Image(systemName: "speedometer").font(.caption).foregroundColor(.blue)
+                        Text(state.speedLabel).font(.caption).fontWeight(.semibold).foregroundColor(.blue)
+                        Text("speed").font(.caption2).foregroundColor(.secondary)
+                    }
+                    .padding(.horizontal, 8).padding(.vertical, 4)
+                    .background(Color.blue.opacity(0.08))
+                    .cornerRadius(8)
+                }
+                .buttonStyle(.plain)
+                .confirmationDialog("Print Speed", isPresented: $showSpeedPicker, titleVisibility: .visible) {
+                    Button("Silent")      { Task { try? await onCommand("set_speed", "1") } }
+                    Button("Standard")   { Task { try? await onCommand("set_speed", "2") } }
+                    Button("Sport")      { Task { try? await onCommand("set_speed", "3") } }
+                    Button("Ludicrous")  { Task { try? await onCommand("set_speed", "4") } }
+                    Button("Cancel", role: .cancel) {}
+                }
             }
+
+            Divider()
+
+            // Control buttons
+            HStack(spacing: 10) {
+                Button {
+                    Task {
+                        isBusy = true
+                        try? await onCommand(state.isPaused ? "resume" : "pause", nil)
+                        isBusy = false
+                    }
+                } label: {
+                    Label(state.isPaused ? "Resume" : "Pause",
+                          systemImage: state.isPaused ? "play.fill" : "pause.fill")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundColor(state.isPaused ? .green : .orange)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background((state.isPaused ? Color.green : Color.orange).opacity(0.12))
+                        .cornerRadius(10)
+                }
+
+                Button { showStopConfirm = true } label: {
+                    Label("Stop", systemImage: "stop.fill")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundColor(.red)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(Color.red.opacity(0.12))
+                        .cornerRadius(10)
+                }
+                .confirmationDialog("Stop Print?", isPresented: $showStopConfirm, titleVisibility: .visible) {
+                    Button("Stop Print", role: .destructive) {
+                        Task {
+                            isBusy = true
+                            try? await onCommand("stop", nil)
+                            isBusy = false
+                        }
+                    }
+                } message: { Text("This will cancel the current print.") }
+            }
+            .disabled(isBusy)
+            .overlay(isBusy ? AnyView(ProgressView().frame(maxWidth: .infinity)) : AnyView(EmptyView()))
         }
         .padding()
         .glassCard()
@@ -400,27 +468,60 @@ struct PrintProgressCard: View {
 // MARK: - Temperature Card
 struct TemperatureCard: View {
     let state: PrinterLiveState
+    let onCommand: (String, String?) async throws -> Void
+
+    @State private var editingNozzle = false
+    @State private var editingBed = false
+    @State private var tempInput = ""
 
     var body: some View {
         HStack(spacing: 0) {
-            tempTile(label: "Nozzle", value: state.nozzleTemp, icon: "flame.fill", color: .orange)
+            Button {
+                tempInput = "\(Int(state.nozzleTemp))"
+                editingNozzle = true
+            } label: {
+                tempTile(label: "Nozzle", value: state.nozzleTemp, icon: "flame.fill", color: .orange, tappable: true)
+            }
+            .buttonStyle(.plain)
+
             Divider().frame(height: 44)
-            tempTile(label: "Bed", value: state.bedTemp, icon: "square.fill", color: .blue)
+
+            Button {
+                tempInput = "\(Int(state.bedTemp))"
+                editingBed = true
+            } label: {
+                tempTile(label: "Bed", value: state.bedTemp, icon: "square.fill", color: .blue, tappable: true)
+            }
+            .buttonStyle(.plain)
+
             if state.chamberTemp > 0 {
                 Divider().frame(height: 44)
-                tempTile(label: "Chamber", value: state.chamberTemp, icon: "house.fill", color: .purple)
+                tempTile(label: "Chamber", value: state.chamberTemp, icon: "house.fill", color: .purple, tappable: false)
             }
         }
         .padding()
         .glassCard()
+        .alert("Set Nozzle Temperature", isPresented: $editingNozzle) {
+            TextField("°C", text: $tempInput).keyboardType(.numberPad)
+            Button("Set") { Task { try? await onCommand("set_nozzle_temp", tempInput) } }
+            Button("Cancel", role: .cancel) {}
+        } message: { Text("Current: \(Int(state.nozzleTemp))°C") }
+        .alert("Set Bed Temperature", isPresented: $editingBed) {
+            TextField("°C", text: $tempInput).keyboardType(.numberPad)
+            Button("Set") { Task { try? await onCommand("set_bed_temp", tempInput) } }
+            Button("Cancel", role: .cancel) {}
+        } message: { Text("Current: \(Int(state.bedTemp))°C") }
     }
 
-    func tempTile(label: String, value: Double, icon: String, color: Color) -> some View {
+    func tempTile(label: String, value: Double, icon: String, color: Color, tappable: Bool) -> some View {
         VStack(spacing: 4) {
             Image(systemName: icon).foregroundColor(color).font(.subheadline)
             Text(String(format: "%.0f°C", value))
                 .font(.system(.subheadline, design: .rounded)).fontWeight(.bold)
             Text(label).font(.caption2).foregroundColor(.secondary)
+            if tappable {
+                Image(systemName: "pencil").font(.system(size: 9)).foregroundColor(.secondary.opacity(0.6))
+            }
         }
         .frame(maxWidth: .infinity)
     }

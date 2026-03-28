@@ -127,6 +127,7 @@ struct FilterChip: View {
 
 // MARK: - Grid View
 struct GridInventoryView: View {
+    @EnvironmentObject var store: InventoryStore
     let filaments: [Filament]
     let columns = [GridItem(.flexible()), GridItem(.flexible())]
 
@@ -138,10 +139,24 @@ struct GridInventoryView: View {
                         FilamentGridCard(filament: filament)
                     }
                     .buttonStyle(PlainButtonStyle())
+                    .contextMenu {
+                        Button { duplicateFilament(filament) } label: {
+                            Label("Duplicate Spool", systemImage: "doc.on.doc")
+                        }
+                    }
                 }
             }
             .padding()
         }
+    }
+
+    private func duplicateFilament(_ filament: Filament) {
+        var copy = filament
+        copy.id = UUID().uuidString
+        copy.remainingWeightG = filament.totalWeightG
+        copy.printJobs = []
+        copy.lastUpdated = Date()
+        store.addFilament(copy)
     }
 }
 
@@ -319,6 +334,17 @@ struct ListInventoryView: View {
                     FilamentListRow(filament: filament)
                 }
                 .buttonStyle(.plain)
+                .swipeActions(edge: .leading) {
+                    Button { duplicateFilament(filament) } label: {
+                        Label("Duplicate", systemImage: "doc.on.doc")
+                    }
+                    .tint(.blue)
+                }
+                .contextMenu {
+                    Button { duplicateFilament(filament) } label: {
+                        Label("Duplicate Spool", systemImage: "doc.on.doc")
+                    }
+                }
             }
             .onDelete { indexSet in
                 indexSet.forEach { idx in
@@ -326,6 +352,15 @@ struct ListInventoryView: View {
                 }
             }
         }
+    }
+
+    private func duplicateFilament(_ filament: Filament) {
+        var copy = filament
+        copy.id = UUID().uuidString
+        copy.remainingWeightG = filament.totalWeightG
+        copy.printJobs = []
+        copy.lastUpdated = Date()
+        store.addFilament(copy)
     }
 }
 
