@@ -190,6 +190,10 @@ function processPrinterMessage(payload) {
     const print = msg.print;
     if (!print) return;
 
+    // ── Dump temp fields once for debugging ──────────────────────────────────
+    const tempFields = Object.entries(print).filter(([k]) => k.includes('temp') || k.includes('temper'));
+    if (tempFields.length) console.log('[debug] temp fields:', JSON.stringify(Object.fromEntries(tempFields)));
+
     // ── Update live printer state (for iOS polling) ───────────────────────────
     const liveState = {
       print_status: print.gcode_state || 'IDLE',
