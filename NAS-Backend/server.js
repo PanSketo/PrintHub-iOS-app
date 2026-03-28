@@ -316,6 +316,80 @@ app.get('/api/printer/state', (req, res) => {
   }
 });
 
+// ── Printer Print Control ─────────────────────────────────────────────────────
+// POST /api/printer/command — sends a control command to the printer via MQTT
+// Body: { "command": "pause"|"resume"|"stop"|"set_speed"|"set_nozzle_temp"|"set_bed_temp", "value": "..." }
+
+app.post('/api/printer/command', (req, res) => {
+  const { command, value } = req.body || {};
+  if (!command) return res.status(400).json({ error: 'command is required' });
+  if (!PRINTER_IP || !PRINTER_ACCESS_CODE || !PRINTER_SERIAL) {
+    return res.status(503).json({ error: 'Printer not configured' });
+  }
+
+  let mqttPayload;
+  switch (command) {
+    case 'pause':
+      mqttPayload = { print: { sequence_id: '1', command: 'pause' } };
+      break;
+    case 'resume':
+      mqttPayload = { print: { sequence_id: '1', command: 'resume' } };
+      break;
+    case 'stop':
+      mqttPayload = { print: { sequence_id: '1', command: 'stop' } };
+      break;
+    case 'set_speed':
+      if (!value) return res.status(400).json({ error: 'value required for set_speed (1-4)' });
+      mqttPayload = { print: { sequence_id: '1', command: 'print_speed', param: String(value) } };
+      break;
+    case 'set_nozzle_temp':
+      if (!value) return res.status(400).json({ error: 'value required for set_nozzle_temp' });
+      mqttPayload = { print: { sequence_id: '1', command: 'gcode_line', param: `M104 S${value} \n` } };
+      break;
+    case 'set_bed_temp':
+      if (!value) return res.status(400).json({ error: 'value required for set_bed_temp' });
+      mqttPayload = { print: { sequence_id: '1', command: 'gcode_line', param: `M140 S${value} \n` } };
+      break;
+    default:
+      return res.status(400).json({ error: `Unknown command: ${command}` });
+  }
+
+  console.log(`[printer] Command: ${command}${value !== undefined ? ' value=' + value : ''}`);
+
+  const client = mqtt.connect(`mqtts://${PRINTER_IP}:8883`, {
+    username: 'bblp',
+    password: PRINTER_ACCESS_CODE,
+    clientId: `filament_cmd_${crypto.randomBytes(4).toString('hex')}`,
+    rejectUnauthorized: false,
+    connectTimeout: 10000,
+    reconnectPeriod: 0
+  });
+
+  let settled = false;
+  const settle = (err) => {
+    if (settled) return;
+    settled = true;
+    if (err) {
+      console.error('[printer] Command error:', err.message);
+      try { client.end(true); } catch (_) {}
+      if (!res.headersSent) res.status(500).json({ error: err.message });
+    } else {
+      if (!res.headersSent) res.json({ ok: true });
+    }
+  };
+
+  const timer = setTimeout(() => settle(new Error('MQTT connection timed out')), 12000);
+
+  client.on('connect', () => {
+    clearTimeout(timer);
+    client.publish(`device/${PRINTER_SERIAL}/request`, JSON.stringify(mqttPayload), () => {
+      setTimeout(() => { try { client.end(); } catch (_) {} settle(null); }, 300);
+    });
+  });
+
+  client.on('error', (err) => { clearTimeout(timer); settle(err); });
+});
+
 // ── Printer Chamber Light ─────────────────────────────────────────────────────
 // GET  /api/printer/light   — returns { on: bool, known: bool }
 // POST /api/printer/light   — body: { "on": bool } — sends ledctrl via MQTT
@@ -337,6 +411,8 @@ app.post('/api/printer/light', (req, res) => {
     return res.status(503).json({ error: 'Printer not configured' });
   }
 
+  console.log(`[light] Connecting to printer MQTT to turn light ${on ? 'ON' : 'OFF'}`);
+
   const client = mqtt.connect(`mqtts://${PRINTER_IP}:8883`, {
     username: 'bblp',
     password: PRINTER_ACCESS_CODE,
@@ -346,14 +422,27 @@ app.post('/api/printer/light', (req, res) => {
     reconnectPeriod: 0
   });
 
-  const done = (err) => { try { client.end(true); } catch (_) {} if (!res.headersSent) err ? res.status(500).json({ error: err.message }) : res.json({ ok: true, on }); };
-  const timer = setTimeout(() => done(new Error('MQTT connection timed out')), 12000);
+  let settled = false;
+  const settle = (err) => {
+    if (settled) return;
+    settled = true;
+    if (err) {
+      console.error('[light] Error:', err.message);
+      try { client.end(true); } catch (_) {}
+      if (!res.headersSent) res.status(500).json({ error: err.message });
+    } else {
+      if (!res.headersSent) res.json({ ok: true, on });
+    }
+  };
+
+  const timer = setTimeout(() => settle(new Error('MQTT connection timed out')), 12000);
 
   client.on('connect', () => {
+    console.log('[light] MQTT connected, publishing ledctrl command');
     clearTimeout(timer);
     const cmd = {
       system: {
-        sequence_id: String(Date.now()),
+        sequence_id: '1001',
         command: 'ledctrl',
         led_node: 'chamber_light',
         led_mode: on ? 'on' : 'off',
@@ -364,15 +453,16 @@ app.post('/api/printer/light', (req, res) => {
       }
     };
     client.publish(`device/${PRINTER_SERIAL}/request`, JSON.stringify(cmd), () => {
-      // Optimistically persist the new state so the next GET reflects it immediately
+      console.log('[light] Command published, closing connection');
       db.prepare(`INSERT INTO printer_state (key, value, updated_at) VALUES ('chamber_light', ?, datetime('now'))
         ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')`)
         .run(JSON.stringify(on));
-      done(null);
+      // Give the packet time to flush before closing
+      setTimeout(() => { try { client.end(); } catch (_) {} settle(null); }, 300);
     });
   });
 
-  client.on('error', (err) => { clearTimeout(timer); done(err); });
+  client.on('error', (err) => { clearTimeout(timer); settle(err); });
 });
 
 // ── Printer Events ────────────────────────────────────────────────────────────
