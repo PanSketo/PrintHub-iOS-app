@@ -15,17 +15,23 @@ class NASService: ObservableObject {
     private let apiKeyKey = "nas_api_key"
     private var session: URLSession
 
+    private let appGroupSuite = "group.com.pansketo.filamentinventory"
+
     var baseURL: String {
         get { defaults.string(forKey: baseURLKey) ?? "" }
         set {
             defaults.set(newValue, forKey: baseURLKey)
+            UserDefaults(suiteName: appGroupSuite)?.set(newValue, forKey: baseURLKey)
             isConfigured = !newValue.isEmpty
         }
     }
 
     var apiKey: String {
         get { defaults.string(forKey: apiKeyKey) ?? "" }
-        set { defaults.set(newValue, forKey: apiKeyKey) }
+        set {
+            defaults.set(newValue, forKey: apiKeyKey)
+            UserDefaults(suiteName: appGroupSuite)?.set(newValue, forKey: apiKeyKey)
+        }
     }
 
     private init() {
@@ -349,6 +355,23 @@ class NASService: ObservableObject {
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: String],
               let localURL = json["localURL"] else { return nil }
         return localURL
+    }
+
+    // MARK: - Printer Commands
+    func sendPrinterCommand(_ command: String, value: String? = nil, using config: PrinterConfig? = nil) async throws {
+        let base = config?.nasURL ?? baseURL
+        let key  = config?.apiKey ?? apiKey
+        guard let url = URL(string: "\(base)/api/printer/command") else { throw NASError.invalidURL }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.addValue(key, forHTTPHeaderField: "X-API-Key")
+        var body: [String: Any] = ["command": command]
+        if let v = value { body["value"] = v }
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        request.timeoutInterval = 15
+        let (_, response) = try await session.data(for: request)
+        guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw NASError.serverError }
     }
 
     // MARK: - Chamber Light
