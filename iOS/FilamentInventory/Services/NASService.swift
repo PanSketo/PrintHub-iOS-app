@@ -40,6 +40,16 @@ class NASService: ObservableObject {
         self.session = URLSession(configuration: config)
         isConfigured = !defaults.string(forKey: baseURLKey).isNilOrEmpty
 
+        // Mirror current values to App Group so the widget can always read them,
+        // even if they were saved before widget support was added.
+        let suite = UserDefaults(suiteName: appGroupSuite)
+        if let url = defaults.string(forKey: baseURLKey), !url.isEmpty {
+            suite?.set(url, forKey: baseURLKey)
+        }
+        if let key = defaults.string(forKey: apiKeyKey), !key.isEmpty {
+            suite?.set(key, forKey: apiKeyKey)
+        }
+
         // Auto-connect immediately on launch if already configured
         if isConfigured {
             Task { await self.autoConnect() }
