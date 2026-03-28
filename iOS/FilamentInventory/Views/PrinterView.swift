@@ -406,8 +406,10 @@ struct TemperatureCard: View {
             tempTile(label: "Nozzle", value: state.nozzleTemp, icon: "flame.fill", color: .orange)
             Divider().frame(height: 44)
             tempTile(label: "Bed", value: state.bedTemp, icon: "square.fill", color: .blue)
-            Divider().frame(height: 44)
-            tempTile(label: "Chamber", value: state.chamberTemp, icon: "house.fill", color: .purple)
+            if state.chamberTemp > 0 {
+                Divider().frame(height: 44)
+                tempTile(label: "Chamber", value: state.chamberTemp, icon: "house.fill", color: .purple)
+            }
         }
         .padding()
         .glassCard()
