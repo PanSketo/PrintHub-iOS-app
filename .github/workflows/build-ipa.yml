@@ -39,10 +39,15 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
             AD_HOC_CODE_SIGNING_ALLOWED=YES \
-            PRODUCT_BUNDLE_IDENTIFIER=com.pansketo.filamentinventory \
-            clean archive \
-            | xcpretty || true
+            clean archive
           test -d "$RUNNER_TEMP/FilamentInventory.xcarchive" && echo "✅ Archive created" || (echo "❌ Archive missing" && exit 1)
+
+      - name: Verify widget is embedded
+        run: |
+          PLUGIN_DIR="$RUNNER_TEMP/FilamentInventory.xcarchive/Products/Applications/FilamentInventory.app/PlugIns"
+          echo "Contents of PlugIns dir:"
+          ls "$PLUGIN_DIR" || echo "⚠️ No PlugIns directory found"
+          test -d "$PLUGIN_DIR/FilamentWidget.appex" && echo "✅ Widget embedded" || (echo "❌ Widget NOT embedded" && exit 1)
 
       - name: Package into IPA
         run: |
