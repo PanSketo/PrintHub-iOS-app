@@ -1,27 +1,109 @@
 import WidgetKit
 import SwiftUI
+import AppIntents
+
+// MARK: - Configuration Intent (iOS 17+)
+
+@available(iOS 17.0, *)
+struct FilamentWidgetIntent: AppIntent, WidgetConfigurationIntent {
+    static var title: LocalizedStringResource = "Printer Connection"
+    static var description = IntentDescription("Set your NAS URL and API key.")
+
+    @Parameter(title: "NAS URL")
+    var nasURL: String
+
+    @Parameter(title: "API Key")
+    var apiKey: String
+
+    init() {
+        self.nasURL = ""
+        self.apiKey = ""
+    }
+
+    init(nasURL: String, apiKey: String) {
+        self.nasURL = nasURL
+        self.apiKey = apiKey
+    }
+}
 
 // MARK: - Data Model
 
 struct PrintEntry: TimelineEntry {
     let date: Date
-    let status: String        // IDLE, RUNNING, PAUSE, FINISH, FAILED
+    let status: String
     let printName: String
     let progress: Int
     let remainingMinutes: Int
     let isConnected: Bool
+    let isConfigured: Bool
 }
 
-// MARK: - Timeline Provider
+// MARK: - Network helper
 
-struct FilamentProvider: TimelineProvider {
-    private let appGroup = "group.com.pansketo.filamentinventory"
-    private let baseURLKey = "nas_base_url"
-    private let apiKeyKey  = "nas_api_key"
+private func fetchPrinterEntry(nasURL: String, apiKey: String) async -> PrintEntry {
+    let baseURL = nasURL.trimmingCharacters(in: .whitespaces)
+    guard !baseURL.isEmpty, let url = URL(string: "\(baseURL)/api/printer/state") else {
+        return PrintEntry(date: Date(), status: "IDLE", printName: "",
+                          progress: 0, remainingMinutes: 0, isConnected: false, isConfigured: false)
+    }
+    var request = URLRequest(url: url)
+    request.addValue(apiKey.trimmingCharacters(in: .whitespaces), forHTTPHeaderField: "X-API-Key")
+    request.timeoutInterval = 10
+    do {
+        let (data, _) = try await URLSession.shared.data(for: request)
+        if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            let connected = json["connected"] as? Bool ?? false
+            let live      = json["live"] as? [String: Any]
+            let status    = live?["print_status"] as? String ?? "IDLE"
+            return PrintEntry(
+                date: Date(),
+                status: status,
+                printName: live?["print_name"] as? String ?? "",
+                progress: live?["progress"] as? Int ?? 0,
+                remainingMinutes: live?["remaining_minutes"] as? Int ?? 0,
+                isConnected: connected,
+                isConfigured: true
+            )
+        }
+    } catch {}
+    return PrintEntry(date: Date(), status: "IDLE", printName: "",
+                      progress: 0, remainingMinutes: 0, isConnected: false, isConfigured: true)
+}
+
+private func nextRefresh(for entry: PrintEntry) -> Date {
+    let interval: TimeInterval = (entry.status == "RUNNING" || entry.status == "PAUSE") ? 60 : 300
+    return Date().addingTimeInterval(interval)
+}
+
+// MARK: - AppIntentTimelineProvider (iOS 17+)
+
+@available(iOS 17.0, *)
+struct IntentFilamentProvider: AppIntentTimelineProvider {
+    func placeholder(in context: Context) -> PrintEntry {
+        PrintEntry(date: Date(), status: "RUNNING", printName: "Benchy.3mf",
+                   progress: 42, remainingMinutes: 75, isConnected: true, isConfigured: true)
+    }
+
+    func snapshot(for configuration: FilamentWidgetIntent, in context: Context) async -> PrintEntry {
+        await fetchPrinterEntry(nasURL: configuration.nasURL, apiKey: configuration.apiKey)
+    }
+
+    func timeline(for configuration: FilamentWidgetIntent, in context: Context) async -> Timeline<PrintEntry> {
+        let entry = await fetchPrinterEntry(nasURL: configuration.nasURL, apiKey: configuration.apiKey)
+        return Timeline(entries: [entry], policy: .after(nextRefresh(for: entry)))
+    }
+}
+
+// MARK: - StaticTimelineProvider (iOS 16 fallback, reads from App Group)
+
+struct StaticFilamentProvider: TimelineProvider {
+    private let appGroup  = "group.com.pansketo.filamentinventory"
+    private let urlKey    = "nas_base_url"
+    private let keyKey    = "nas_api_key"
 
     func placeholder(in context: Context) -> PrintEntry {
         PrintEntry(date: Date(), status: "RUNNING", printName: "Benchy.3mf",
-                   progress: 42, remainingMinutes: 75, isConnected: true)
+                   progress: 42, remainingMinutes: 75, isConnected: true, isConfigured: true)
     }
 
     func getSnapshot(in context: Context, completion: @escaping (PrintEntry) -> Void) {
@@ -29,42 +111,13 @@ struct FilamentProvider: TimelineProvider {
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<PrintEntry>) -> Void) {
-        let defaults  = UserDefaults(suiteName: appGroup)
-        let baseURL   = defaults?.string(forKey: baseURLKey) ?? ""
-        let apiKey    = defaults?.string(forKey: apiKeyKey)  ?? ""
-
-        guard !baseURL.isEmpty, let url = URL(string: "\(baseURL)/api/printer/state") else {
-            let entry = PrintEntry(date: Date(), status: "IDLE", printName: "",
-                                   progress: 0, remainingMinutes: 0, isConnected: false)
-            completion(Timeline(entries: [entry], policy: .after(Date().addingTimeInterval(300))))
-            return
+        let defaults = UserDefaults(suiteName: appGroup)
+        let nasURL   = defaults?.string(forKey: urlKey) ?? ""
+        let apiKey   = defaults?.string(forKey: keyKey) ?? ""
+        Task {
+            let entry = await fetchPrinterEntry(nasURL: nasURL, apiKey: apiKey)
+            completion(Timeline(entries: [entry], policy: .after(nextRefresh(for: entry))))
         }
-
-        var request = URLRequest(url: url)
-        request.addValue(apiKey, forHTTPHeaderField: "X-API-Key")
-        request.timeoutInterval = 10
-
-        URLSession.shared.dataTask(with: request) { data, _, _ in
-            var entry = PrintEntry(date: Date(), status: "IDLE", printName: "",
-                                   progress: 0, remainingMinutes: 0, isConnected: false)
-            if let data,
-               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                let connected = json["connected"] as? Bool ?? false
-                let live      = json["live"] as? [String: Any]
-                let status    = live?["print_status"] as? String ?? "IDLE"
-                entry = PrintEntry(
-                    date: Date(),
-                    status: status,
-                    printName: live?["print_name"] as? String ?? "",
-                    progress: live?["progress"] as? Int ?? 0,
-                    remainingMinutes: live?["remaining_minutes"] as? Int ?? 0,
-                    isConnected: connected
-                )
-            }
-            let isActive = entry.status == "RUNNING" || entry.status == "PAUSE"
-            let next = Date().addingTimeInterval(isActive ? 60 : 300)
-            completion(Timeline(entries: [entry], policy: .after(next)))
-        }.resume()
     }
 }
 
@@ -98,7 +151,6 @@ struct FilamentWidgetView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            // Header
             HStack {
                 Image(systemName: isActive ? "printer.fill" : "printer")
                     .foregroundColor(statusColor)
@@ -112,18 +164,23 @@ struct FilamentWidgetView: View {
                     .frame(width: 7, height: 7)
             }
 
-            if isActive {
-                // Print name
+            if !entry.isConfigured {
+                Spacer()
+                Text("Hold widget → Edit Widget\nto set NAS URL")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
+                Spacer()
+            } else if isActive {
                 Text(entry.printName.isEmpty ? "Print in progress" : entry.printName)
                     .font(.caption2)
                     .foregroundColor(.secondary)
                     .lineLimit(family == .systemSmall ? 1 : 2)
 
-                // Progress bar
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {
-                        RoundedRectangle(cornerRadius: 3)
-                            .fill(Color(.systemFill))
+                        RoundedRectangle(cornerRadius: 3).fill(Color(.systemFill))
                         RoundedRectangle(cornerRadius: 3)
                             .fill(statusColor)
                             .frame(width: geo.size.width * CGFloat(entry.progress) / 100)
@@ -131,7 +188,6 @@ struct FilamentWidgetView: View {
                 }
                 .frame(height: 6)
 
-                // Progress + time
                 HStack(alignment: .bottom) {
                     Text("\(entry.progress)%")
                         .font(.title2.weight(.black))
@@ -176,18 +232,44 @@ private struct WidgetBackgroundModifier: ViewModifier {
     }
 }
 
-// MARK: - Widget Definition
+// MARK: - Widget Definitions
 
-@main
-struct FilamentWidget: Widget {
+@available(iOS 17.0, *)
+struct FilamentWidgetConfigurable: Widget {
     let kind = "FilamentWidget"
-
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: FilamentProvider()) { entry in
+        AppIntentConfiguration(kind: kind, intent: FilamentWidgetIntent.self,
+                               provider: IntentFilamentProvider()) { entry in
+            FilamentWidgetView(entry: entry)
+        }
+        .configurationDisplayName("Print Progress")
+        .description("Live 3D print progress. Hold → Edit Widget to set NAS URL.")
+        .supportedFamilies([.systemSmall, .systemMedium])
+    }
+}
+
+struct FilamentWidgetStatic: Widget {
+    let kind = "FilamentWidgetStatic"
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: kind, provider: StaticFilamentProvider()) { entry in
             FilamentWidgetView(entry: entry)
         }
         .configurationDisplayName("Print Progress")
         .description("Live 3D print progress from your Filament Inventory.")
         .supportedFamilies([.systemSmall, .systemMedium])
+    }
+}
+
+// MARK: - Entry Point
+
+@main
+struct FilamentWidgets: WidgetBundle {
+    @WidgetBundleBuilder
+    var body: some Widget {
+        if #available(iOS 17.0, *) {
+            FilamentWidgetConfigurable()
+        } else {
+            FilamentWidgetStatic()
+        }
     }
 }
