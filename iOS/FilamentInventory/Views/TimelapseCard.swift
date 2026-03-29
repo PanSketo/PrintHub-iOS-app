@@ -209,13 +209,19 @@ struct TimelapsePlayerSheet: View {
     let onSave: () -> Void
     @Environment(\.dismiss) var dismiss
 
+    // Hold the player in state so it isn't recreated on every body evaluation
+    @State private var player: AVPlayer?
+
     var body: some View {
         ZStack(alignment: .topLeading) {
             Color.black.ignoresSafeArea()
 
-            if let url = streamURL {
-                VideoPlayer(player: AVPlayer(url: url))
+            if let p = player {
+                VideoPlayer(player: p)
                     .ignoresSafeArea()
+            } else if streamURL != nil {
+                ProgressView().tint(.white)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 VStack(spacing: 12) {
                     Image(systemName: "exclamationmark.triangle.fill")
@@ -229,7 +235,10 @@ struct TimelapsePlayerSheet: View {
             // Controls overlay
             VStack {
                 HStack {
-                    Button(action: { dismiss() }) {
+                    Button(action: {
+                        player?.pause()
+                        dismiss()
+                    }) {
                         Image(systemName: "xmark.circle.fill")
                             .font(.title)
                             .foregroundColor(.white.opacity(0.85))
@@ -249,6 +258,17 @@ struct TimelapsePlayerSheet: View {
                 }
                 Spacer()
             }
+        }
+        .onAppear {
+            if let url = streamURL {
+                let p = AVPlayer(url: url)
+                player = p
+                p.play()
+            }
+        }
+        .onDisappear {
+            player?.pause()
+            player = nil
         }
     }
 }

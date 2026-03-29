@@ -580,5 +580,8 @@ enum NASError: LocalizedError {
 }
 
 extension Optional where Wrapped == String {
-    var isNilOrEmpty: Bool { self == nil || self!.isEmpty }
+    var isNilOrEmpty: Bool {
+        guard let value = self else { return true }
+        return value.isEmpty
+    }
 }

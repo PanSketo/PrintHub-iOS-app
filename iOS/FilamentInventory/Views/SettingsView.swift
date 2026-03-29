@@ -249,7 +249,7 @@ struct SettingsView: View {
                         Spacer()
                     }
                 } header: {
-                    Text("About Filament Inventory")
+                    Text("About PrintHub")
                 }
 
                 // Printers
@@ -539,10 +539,10 @@ struct NASSetupView: View {
             Spacer()
 
             VStack(spacing: 12) {
-                Image(systemName: "cylinder.split.1x2.fill")
+                Image(systemName: "printer.fill")
                     .font(.system(size: 64))
                     .foregroundColor(.orange)
-                Text("Filament Inventory")
+                Text("PrintHub")
                     .font(.largeTitle)
                     .fontWeight(.black)
                 Text("Connect to your Synology NAS to get started")

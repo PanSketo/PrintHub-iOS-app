@@ -79,6 +79,7 @@ struct PrinterStatusView: View {
     @State private var isLoading = true
     @State private var error: String? = nil
     @State private var pollingTimer: Timer? = nil
+    @State private var isFetching = false
 
     var body: some View {
         NavigationStack {
@@ -286,13 +287,17 @@ struct PrinterStatusView: View {
     }
 
     func fetchState() async {
+        // Prevent overlapping concurrent fetches from the timer + manual refresh
+        guard !isFetching else { return }
+        await MainActor.run { isFetching = true }
+        defer { Task { @MainActor in isFetching = false } }
+
         do {
             let state = try await nasService.fetchPrinterState(using: printerConfig)
             await MainActor.run {
                 self.error = nil
                 self.printerState = state
                 self.isLoading = false
-                self.error = nil
             }
         } catch {
             await MainActor.run {

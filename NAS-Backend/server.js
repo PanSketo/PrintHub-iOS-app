@@ -6,6 +6,7 @@ const fs = require('fs');
 const https = require('https');
 const http = require('http');
 const { spawn } = require('child_process');
+const { PassThrough } = require('stream');
 const mqtt = require('mqtt');
 const ftp = require('basic-ftp');
 
@@ -592,12 +593,28 @@ app.get('/api/printer/timelapse/stream', async (req, res) => {
     // Don't force download — let iOS decide (inline for VideoPlayer, download via share sheet)
     res.setHeader('Content-Disposition', `inline; filename="${fileName}"`);
 
-    const { PassThrough } = require('stream');
     const pass = new PassThrough();
+
+    // Guarantee FTP client is closed on any outcome
+    const cleanup = () => { try { client.close(); } catch (_) {} };
+    res.on('close', cleanup);
+
+    // Propagate PassThrough errors to response so the connection doesn't hang
+    pass.on('error', (err) => {
+      console.error('[timelapse/stream] PassThrough error:', err.message);
+      cleanup();
+      if (!res.writableEnded) res.destroy();
+    });
+
     pass.pipe(res);
 
-    res.on('close', () => { try { client.close(); } catch (_) {} });
-    await client.downloadTo(pass, filePath);
+    try {
+      await client.downloadTo(pass, filePath);
+    } catch (downloadErr) {
+      console.error('[timelapse/stream] FTP download error:', downloadErr.message);
+      cleanup();
+      pass.destroy(downloadErr);
+    }
   } catch (err) {
     console.error('[timelapse/stream] Error:', err.message);
     try { client.close(); } catch (_) {}
@@ -898,7 +915,7 @@ app.get('/api/camera/stream', (req, res) => {
 
 // ── Start
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🧵 Filament Inventory Backend running on port ${PORT}`);
+  console.log(`🖨️  PrintHub Backend running on port ${PORT}`);
   console.log(`📁 Database: ${DB_PATH}`);
   console.log(`🔑 API Key configured: ${API_KEY !== 'change-this-to-a-strong-random-key' ? 'YES ✅' : 'NO ❌ (change it!)'}`);
 });
