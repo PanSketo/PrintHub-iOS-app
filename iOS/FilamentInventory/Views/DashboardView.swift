@@ -10,6 +10,7 @@ enum DashboardCard: String, CaseIterable, Identifiable {
     case lowStock       = "low_stock"
     case typeBreakdown  = "type_breakdown"
     case recentPrints   = "recent_prints"
+    case timelapses     = "timelapses"
 
     var id: String { rawValue }
 
@@ -22,6 +23,7 @@ enum DashboardCard: String, CaseIterable, Identifiable {
         case .lowStock:      return "Low Stock Alerts"
         case .typeBreakdown: return "Filament by Type"
         case .recentPrints:  return "Recent Prints"
+        case .timelapses:    return "Timelapses"
         }
     }
 
@@ -34,6 +36,7 @@ enum DashboardCard: String, CaseIterable, Identifiable {
         case .lowStock:      return "exclamationmark.triangle.fill"
         case .typeBreakdown: return "chart.bar.fill"
         case .recentPrints:  return "printer.fill"
+        case .timelapses:    return "video.fill"
         }
     }
 }
@@ -164,6 +167,10 @@ struct DashboardView: View {
             TypeBreakdownSection()
         case .recentPrints:
             RecentPrintsSection()
+        case .timelapses:
+            if nasService.isConfigured {
+                TimelapseCard()
+            }
         }
     }
 }

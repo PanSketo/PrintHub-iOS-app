@@ -512,6 +512,99 @@ app.get('/api/printer/files', async (req, res) => {
   }
 });
 
+// ── Timelapse List ────────────────────────────────────────────────────────────
+// GET /api/printer/timelapse  — list .mp4 files from /sdcard/timelapse/
+app.get('/api/printer/timelapse', async (req, res) => {
+  if (!PRINTER_IP || !PRINTER_ACCESS_CODE) {
+    return res.status(503).json({ error: 'Printer not configured' });
+  }
+  const client = new ftp.Client();
+  client.ftp.verbose = false;
+  try {
+    await client.access({
+      host: PRINTER_IP,
+      port: 990,
+      user: 'bblp',
+      password: PRINTER_ACCESS_CODE,
+      secure: 'implicit',
+      secureOptions: { rejectUnauthorized: false }
+    });
+    const list = await client.list('/sdcard/timelapse');
+    const files = list
+      .filter(f => f.name !== '.' && f.name !== '..' && f.name.toLowerCase().endsWith('.mp4'))
+      .map(f => ({
+        name: f.name,
+        path: `/sdcard/timelapse/${f.name}`,
+        size: f.size || null,
+        modifiedDate: f.rawModifiedAt || null
+      }))
+      .sort((a, b) => b.name.localeCompare(a.name)); // newest first
+    res.json(files);
+  } catch (err) {
+    console.error('[timelapse] FTP error:', err.message);
+    // Return empty list if folder doesn't exist yet (printer hasn't made a timelapse)
+    if (err.message && err.message.includes('550')) return res.json([]);
+    res.status(500).json({ error: err.message });
+  } finally {
+    client.close();
+  }
+});
+
+// ── Timelapse Stream ──────────────────────────────────────────────────────────
+// GET /api/printer/timelapse/stream?path=/sdcard/timelapse/foo.mp4
+// Proxies the FTP file over HTTP so the iOS VideoPlayer can stream it.
+// Auth: X-API-Key header OR ?key= query param (needed for AVPlayer URLs).
+app.get('/api/printer/timelapse/stream', async (req, res) => {
+  // Accept key as query param for AVPlayer compatibility
+  const keyParam = req.query.key;
+  if (keyParam && keyParam !== API_KEY) return res.status(401).json({ error: 'Unauthorized' });
+  if (!keyParam && req.headers['x-api-key'] !== API_KEY) return res.status(401).json({ error: 'Unauthorized' });
+
+  const filePath = req.query.path;
+  if (!filePath || !filePath.startsWith('/sdcard/timelapse/') || !filePath.endsWith('.mp4')) {
+    return res.status(400).json({ error: 'Invalid path' });
+  }
+  if (!PRINTER_IP || !PRINTER_ACCESS_CODE) {
+    return res.status(503).json({ error: 'Printer not configured' });
+  }
+
+  const client = new ftp.Client();
+  client.ftp.verbose = false;
+  try {
+    await client.access({
+      host: PRINTER_IP,
+      port: 990,
+      user: 'bblp',
+      password: PRINTER_ACCESS_CODE,
+      secure: 'implicit',
+      secureOptions: { rejectUnauthorized: false }
+    });
+
+    // Get file size for Content-Length header
+    let fileSize = null;
+    try { fileSize = await client.size(filePath); } catch (_) {}
+
+    res.setHeader('Content-Type', 'video/mp4');
+    res.setHeader('Accept-Ranges', 'none');
+    if (fileSize) res.setHeader('Content-Length', fileSize);
+
+    const fileName = filePath.split('/').pop();
+    // Don't force download — let iOS decide (inline for VideoPlayer, download via share sheet)
+    res.setHeader('Content-Disposition', `inline; filename="${fileName}"`);
+
+    const { PassThrough } = require('stream');
+    const pass = new PassThrough();
+    pass.pipe(res);
+
+    res.on('close', () => { try { client.close(); } catch (_) {} });
+    await client.downloadTo(pass, filePath);
+  } catch (err) {
+    console.error('[timelapse/stream] Error:', err.message);
+    try { client.close(); } catch (_) {}
+    if (!res.headersSent) res.status(500).json({ error: err.message });
+  }
+});
+
 // ── Start Print ───────────────────────────────────────────────────────────────
 // POST /api/printer/print   — body: { "file_path": "/sdcard/benchy.3mf" }
 // Sends a project_file print command to the printer via MQTT.
