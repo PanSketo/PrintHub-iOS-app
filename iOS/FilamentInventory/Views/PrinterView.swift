@@ -43,7 +43,8 @@ struct PrinterView: View {
             // Segmented control at the top — cleaner than nested TabView
             Picker("Section", selection: $selectedSection) {
                 Text("Live Status").tag(0)
-                Text("Print Log").tag(1)
+                Text("Print Files").tag(1)
+                Text("Print Log").tag(2)
             }
             .pickerStyle(.segmented)
             .padding(.horizontal)
@@ -56,6 +57,8 @@ struct PrinterView: View {
             // Content
             if selectedSection == 0 {
                 PrinterStatusView(printerConfig: printerManager.activePrinter)
+            } else if selectedSection == 1 {
+                PrintFilesView(printerConfig: printerManager.activePrinter)
             } else {
                 PrintLogView()
             }

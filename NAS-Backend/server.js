@@ -7,6 +7,7 @@ const https = require('https');
 const http = require('http');
 const { spawn } = require('child_process');
 const mqtt = require('mqtt');
+const ftp = require('basic-ftp');
 
 const app = express();
 const PORT = process.env.PORT || 3456;
@@ -458,6 +459,122 @@ app.post('/api/printer/light', (req, res) => {
         ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')`)
         .run(JSON.stringify(on));
       // Give the packet time to flush before closing
+      setTimeout(() => { try { client.end(); } catch (_) {} settle(null); }, 300);
+    });
+  });
+
+  client.on('error', (err) => { clearTimeout(timer); settle(err); });
+});
+
+// ── Printer File Browser ──────────────────────────────────────────────────────
+// GET /api/printer/files?path=/   — lists files on the printer's internal/USB storage
+// Connects to the printer via implicit FTPS (port 990, user bblp, pass ACCESS_CODE).
+// Directories are returned first, then files, both sorted alphabetically.
+app.get('/api/printer/files', async (req, res) => {
+  if (!PRINTER_IP || !PRINTER_ACCESS_CODE) {
+    return res.status(503).json({ error: 'Printer not configured (PRINTER_IP / PRINTER_ACCESS_CODE missing)' });
+  }
+  const dirPath = (req.query.path || '/').replace(/\/{2,}/g, '/');
+  const client = new ftp.Client();
+  client.ftp.verbose = false;
+  try {
+    await client.access({
+      host: PRINTER_IP,
+      port: 990,
+      user: 'bblp',
+      password: PRINTER_ACCESS_CODE,
+      secure: 'implicit',
+      secureOptions: { rejectUnauthorized: false }
+    });
+    const list = await client.list(dirPath);
+    const files = list
+      .filter(f => f.name !== '.' && f.name !== '..')
+      .map(f => {
+        const sep = dirPath.endsWith('/') ? '' : '/';
+        return {
+          name: f.name,
+          path: `${dirPath}${sep}${f.name}`,
+          isDirectory: f.isDirectory,
+          size: f.isDirectory ? null : (f.size || null),
+          modifiedDate: f.rawModifiedAt || null
+        };
+      })
+      .sort((a, b) => {
+        if (a.isDirectory !== b.isDirectory) return a.isDirectory ? -1 : 1;
+        return a.name.localeCompare(b.name);
+      });
+    res.json(files);
+  } catch (err) {
+    console.error('[files] FTP error:', err.message);
+    res.status(500).json({ error: err.message });
+  } finally {
+    client.close();
+  }
+});
+
+// ── Start Print ───────────────────────────────────────────────────────────────
+// POST /api/printer/print   — body: { "file_path": "/sdcard/benchy.3mf" }
+// Sends a project_file print command to the printer via MQTT.
+// The FTP URL uses the double-slash convention Bambu expects: ftp://IP//sdcard/file.3mf
+app.post('/api/printer/print', (req, res) => {
+  const { file_path } = req.body || {};
+  if (!file_path) return res.status(400).json({ error: 'file_path is required' });
+  if (!PRINTER_IP || !PRINTER_ACCESS_CODE || !PRINTER_SERIAL) {
+    return res.status(503).json({ error: 'Printer not configured' });
+  }
+
+  const fileName    = file_path.split('/').filter(Boolean).pop() || file_path;
+  const subtaskName = fileName.replace(/\.(gcode\.3mf|3mf|gcode)$/i, '');
+  // Bambu FTP URL: ftp://IP//absolute/path (double slash = absolute)
+  const normalised  = file_path.startsWith('/') ? file_path.slice(1) : file_path;
+  const ftpUrl      = `ftp://${PRINTER_IP}//${normalised}`;
+
+  const mqttPayload = {
+    print: {
+      sequence_id:    String(Date.now()),
+      command:        'project_file',
+      param:          'Metadata/plate_1.gcode',
+      subtask_name:   subtaskName,
+      url:            ftpUrl,
+      bed_type:       'auto',
+      timelapse:      false,
+      bed_leveling:   true,
+      flow_cali:      false,
+      vibration_cali: true,
+      layer_inspect:  false,
+      use_ams:        false
+    }
+  };
+
+  console.log(`[printer] Starting print: ${fileName}  url=${ftpUrl}`);
+
+  const client = mqtt.connect(`mqtts://${PRINTER_IP}:8883`, {
+    username:        'bblp',
+    password:        PRINTER_ACCESS_CODE,
+    clientId:        `filament_print_${crypto.randomBytes(4).toString('hex')}`,
+    rejectUnauthorized: false,
+    connectTimeout:  10000,
+    reconnectPeriod: 0
+  });
+
+  let settled = false;
+  const settle = (err) => {
+    if (settled) return;
+    settled = true;
+    if (err) {
+      console.error('[printer] Print start error:', err.message);
+      try { client.end(true); } catch (_) {}
+      if (!res.headersSent) res.status(500).json({ error: err.message });
+    } else {
+      if (!res.headersSent) res.json({ ok: true });
+    }
+  };
+
+  const timer = setTimeout(() => settle(new Error('MQTT connection timed out')), 12000);
+
+  client.on('connect', () => {
+    clearTimeout(timer);
+    client.publish(`device/${PRINTER_SERIAL}/request`, JSON.stringify(mqttPayload), () => {
       setTimeout(() => { try { client.end(); } catch (_) {} settle(null); }, 300);
     });
   });

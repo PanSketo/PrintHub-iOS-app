@@ -423,6 +423,70 @@ class NASService: ObservableObject {
             throw NASError.serverError
         }
     }
+
+    // MARK: - Printer File Browser
+
+    /// Lists files on the printer's internal / USB storage.
+    /// Backend connects to the printer via implicit FTPS (port 990).
+    func fetchPrinterFiles(path: String = "/", using config: PrinterConfig? = nil) async throws -> [PrinterFile] {
+        let base = config?.nasURL ?? baseURL
+        let key  = config?.apiKey ?? apiKey
+        var components = URLComponents(string: "\(base)/api/printer/files")
+        components?.queryItems = [URLQueryItem(name: "path", value: path)]
+        guard let url = components?.url else { throw NASError.invalidURL }
+        var request = URLRequest(url: url)
+        request.addValue(key, forHTTPHeaderField: "X-API-Key")
+        let (data, response) = try await session.data(for: request)
+        guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw NASError.serverError }
+        return try JSONDecoder().decode([PrinterFile].self, from: data)
+    }
+
+    /// Sends a project_file print command to the printer via the backend.
+    func startPrint(filePath: String, using config: PrinterConfig? = nil) async throws {
+        let base = config?.nasURL ?? baseURL
+        let key  = config?.apiKey ?? apiKey
+        guard let url = URL(string: "\(base)/api/printer/print") else { throw NASError.invalidURL }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.addValue(key, forHTTPHeaderField: "X-API-Key")
+        request.httpBody = try JSONSerialization.data(withJSONObject: ["file_path": filePath])
+        request.timeoutInterval = 30
+        let (_, response) = try await session.data(for: request)
+        guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw NASError.serverError }
+    }
+}
+
+// MARK: - Printer File Model
+
+struct PrinterFile: Codable, Identifiable {
+    let name: String
+    let path: String
+    let isDirectory: Bool
+    let size: Int?
+    let modifiedDate: String?
+
+    var id: String { path }
+
+    var displaySize: String? {
+        guard let s = size, !isDirectory else { return nil }
+        if s < 1_024             { return "\(s) B" }
+        if s < 1_048_576         { return "\(s / 1_024) KB" }
+        return String(format: "%.1f MB", Double(s) / 1_048_576)
+    }
+
+    var isPrintable: Bool {
+        let l = name.lowercased()
+        return l.hasSuffix(".3mf") || l.hasSuffix(".gcode") || l.hasSuffix(".gcode.3mf")
+    }
+
+    var friendlyName: String {
+        switch name.lowercased() {
+        case "sdcard": return "Internal Storage"
+        case "usb":    return "USB Drive"
+        default:       return name
+        }
+    }
 }
 
 // MARK: - NAS Errors
