@@ -46,7 +46,7 @@ struct AddFilamentView: View {
     var canFetchImage: Bool { !brand.isEmpty && !colorName.isEmpty }
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Form {
                 // Barcode Section
                 Section {
@@ -218,7 +218,7 @@ struct AddFilamentView: View {
                                 .resizable()
                                 .scaledToFit()
                                 .frame(height: 120)
-                                .cornerRadius(10)
+                                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                             Spacer()
                         }
                         Button("Fetch Different Image") {
@@ -532,7 +532,7 @@ struct ColorWheelPickerSheet: View {
 
     // UIColorPickerViewController wrapper
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ColorPickerWrapperView(hexCode: $hexCode, pickedColor: $pickedColor)
                 .navigationTitle("Choose Colour")
                 .navigationBarTitleDisplayMode(.inline)

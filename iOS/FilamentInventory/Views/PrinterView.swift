@@ -28,7 +28,7 @@ struct PrinterView: View {
                                 .padding(.vertical, 6)
                                 .background(isActive ? Color.orange : Color(.tertiarySystemBackground))
                                 .foregroundColor(isActive ? .white : .primary)
-                                .cornerRadius(20)
+                                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                             }
                             .buttonStyle(.plain)
                         }
@@ -78,7 +78,7 @@ struct PrinterStatusView: View {
     @State private var pollingTimer: Timer? = nil
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ScrollView {
                 VStack(spacing: 16) {
 
@@ -101,7 +101,7 @@ struct PrinterStatusView: View {
                             .padding(12)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .background(Color.red.opacity(0.1))
-                            .cornerRadius(12)
+                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                         }
 
                         // ── Live printer state (if bridge is running) ─────
@@ -239,7 +239,7 @@ struct PrinterStatusView: View {
                     .padding(10)
                     .background(Color.orange.opacity(0.15))
                     .foregroundColor(.orange)
-                    .cornerRadius(10)
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -392,7 +392,7 @@ struct PrintProgressCard: View {
                     }
                     .padding(.horizontal, 8).padding(.vertical, 4)
                     .background(Color.blue.opacity(0.08))
-                    .cornerRadius(8)
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
                 .buttonStyle(.plain)
                 .confirmationDialog("Print Speed", isPresented: $showSpeedPicker, titleVisibility: .visible) {
@@ -422,7 +422,7 @@ struct PrintProgressCard: View {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 10)
                         .background((state.isPaused ? Color.green : Color.orange).opacity(0.12))
-                        .cornerRadius(10)
+                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 }
 
                 Button { showStopConfirm = true } label: {
@@ -432,7 +432,7 @@ struct PrintProgressCard: View {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 10)
                         .background(Color.red.opacity(0.12))
-                        .cornerRadius(10)
+                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 }
                 .confirmationDialog("Stop Print?", isPresented: $showStopConfirm, titleVisibility: .visible) {
                     Button("Stop Print", role: .destructive) {

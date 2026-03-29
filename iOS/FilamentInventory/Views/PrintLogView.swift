@@ -19,7 +19,7 @@ struct PrintLogView: View {
     }
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             List {
                 // Summary section
                 Section {
