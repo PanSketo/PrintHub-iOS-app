@@ -48,7 +48,7 @@ struct LogPrintView: View {
                                 .foregroundColor(.orange)
                         }
                         Slider(value: $weightUsed, in: 1...filament.remainingWeightG, step: 1)
-                            .accentColor(.orange)
+                            .tint(.orange)
                         HStack {
                             Text("Remaining after:")
                                 .font(.caption)
@@ -185,7 +185,7 @@ struct EditFilamentView: View {
                             Spacer()
                             Text("\(Int(totalWeight))g").fontWeight(.semibold)
                         }
-                        Slider(value: $totalWeight, in: 100...5000, step: 50).accentColor(.orange)
+                        Slider(value: $totalWeight, in: 100...5000, step: 50).tint(.orange)
                     }
                     VStack(alignment: .leading) {
                         HStack {
@@ -193,7 +193,7 @@ struct EditFilamentView: View {
                             Spacer()
                             Text("\(Int(remainingWeight))g").fontWeight(.semibold)
                         }
-                        Slider(value: $remainingWeight, in: 0...totalWeight, step: 10).accentColor(.blue)
+                        Slider(value: $remainingWeight, in: 0...totalWeight, step: 10).tint(.blue)
                     }
                 } header: { Text("Weight") }
 
