@@ -1,0 +1,620 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0100BABACC730CF793595D1D /* FilamentInventoryApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC0C955044502261170967D7 /* FilamentInventoryApp.swift */; };
+		975DB069E4A3B0D488D8ED5A /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A370FF79DFBE55C52AB611D2 /* ContentView.swift */; };
+		1B856FF4F79A9F225AE5646D /* FilamentModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56A6A2B64E0470550379EE0C /* FilamentModel.swift */; };
+		328D1F278345EEF2B5DE4FA0 /* NASService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9B0A4C806F68B548332BA4E /* NASService.swift */; };
+		6EA5D8E2932EB51F2D851C71 /* InventoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74317758A8B9AB3E5B097F8A /* InventoryStore.swift */; };
+		E3E3F81AD601AA0F843B3068 /* FilamentLookupService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 709F4924EDD1B6593CE9C8C1 /* FilamentLookupService.swift */; };
+		5D5E1D5DB666A41BA038B4CA /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3F34FAB5D6735F672A69CC3 /* NotificationManager.swift */; };
+		2DCB4B287D3212F3343D04D2 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A0A35D8515B6140FDCED065 /* DashboardView.swift */; };
+		56183D7779F560DE79FC26F0 /* InventoryListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7FF0E5B0C617354C43DE679 /* InventoryListView.swift */; };
+		09AC6FC551E2958491A90494 /* AddFilamentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06BF8F5DE94E5BFA6B90EE5F /* AddFilamentView.swift */; };
+		A6FF9B3E9C59EFC3478693A6 /* BarcodeScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D563EF76C1506B1621DFC8F8 /* BarcodeScannerView.swift */; };
+		7F079ED50837259989E70742 /* FilamentDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4710B1BDFC7F5DCF6AF073F5 /* FilamentDetailView.swift */; };
+		8CBD536B5011040543B7AFCF /* LogPrintView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6359315938D9E6BED438D07C /* LogPrintView.swift */; };
+		DC959868A91885676C1DF0AA /* PrintLogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7C914350EF6CA2DA2C459FE /* PrintLogView.swift */; };
+		A1B2C3D4E5F60718293A4B5C /* PrintFilesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F6071829304A5B6C /* PrintFilesView.swift */; };
+		C3D4E5F607182930A4B5C6D7 /* TimelapseCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4E5F6071829304AB5C6D7E8 /* TimelapseCard.swift */; };
+		05EF7B1875C5B505D58F4EE8 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17A75D7F1AC2628A84FC45FA /* SettingsView.swift */; };
+		2B7300BB3849B3CD5F41F94A /* ShoppingListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD186D90B9CBA29455CD3919 /* ShoppingListView.swift */; };
+		42DCDF678697BEFF51F14D94 /* ChartsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C561E846C9B127847B6EE6A6 /* ChartsView.swift */; };
+		93160D2EB7562BFA7A599ECE /* PriceHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3597108D3A66A954BA8FD9EE /* PriceHistoryView.swift */; };
+		B6C08DB51CB9A9D5881C0DEF /* RestockView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5800C33B524B693C848AB7A7 /* RestockView.swift */; };
+		8CEA8B5C5547BB4023EA91DF /* PrinterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09C840D46790EF0AC05C14F5 /* PrinterView.swift */; };
+		F4A2C1D3E5B6784901234567 /* CameraFeedCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9B8C7D6E5F4321098765432 /* CameraFeedCard.swift */; };
+		7ABF4DC898A28448828D4932 /* DashboardCustomizeSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DCE6B7A50664C0BCE4B8321 /* DashboardCustomizeSheet.swift */; };
+		DBCAEEA75CD1232B9E0E69D5 /* GlassStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE73977386F1A781A97060C8 /* GlassStyle.swift */; };
+		76799C555F79C18C47A7AE65 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3EC4EA09CED15A71400F27B6 /* Assets.xcassets */; };
+		AA11BB22CC33DD44EE55FF01 /* PrinterManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB11CC22DD33EE44FF550011 /* PrinterManager.swift */; };
+		CC11DD22EE33FF44AA550022 /* CloudBackupService.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD11EE22FF33AA44BB550022 /* CloudBackupService.swift */; };
+		EE11FF22AA33BB44CC550033 /* FilamentIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF11AA22BB33CC44DD550033 /* FilamentIntents.swift */; };
+		FW0001AABB11CC22DD33EE04 /* FilamentWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = FW0001AABB11CC22DD33EE01 /* FilamentWidget.swift */; };
+		FW0001AABB11CC22DD33EE05 /* FilamentWidget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = FW0001AABB11CC22DD33EE02 /* FilamentWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		5718BA8B2965F0F686C8E55B /* FilamentInventory.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FilamentInventory.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		AC0C955044502261170967D7 /* FilamentInventoryApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilamentInventoryApp.swift; sourceTree = "<group>"; };
+		A370FF79DFBE55C52AB611D2 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		56A6A2B64E0470550379EE0C /* FilamentModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilamentModel.swift; sourceTree = "<group>"; };
+		E9B0A4C806F68B548332BA4E /* NASService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NASService.swift; sourceTree = "<group>"; };
+		74317758A8B9AB3E5B097F8A /* InventoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InventoryStore.swift; sourceTree = "<group>"; };
+		709F4924EDD1B6593CE9C8C1 /* FilamentLookupService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilamentLookupService.swift; sourceTree = "<group>"; };
+		C3F34FAB5D6735F672A69CC3 /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
+		6A0A35D8515B6140FDCED065 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
+		F7FF0E5B0C617354C43DE679 /* InventoryListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InventoryListView.swift; sourceTree = "<group>"; };
+		06BF8F5DE94E5BFA6B90EE5F /* AddFilamentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddFilamentView.swift; sourceTree = "<group>"; };
+		D563EF76C1506B1621DFC8F8 /* BarcodeScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BarcodeScannerView.swift; sourceTree = "<group>"; };
+		4710B1BDFC7F5DCF6AF073F5 /* FilamentDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilamentDetailView.swift; sourceTree = "<group>"; };
+		6359315938D9E6BED438D07C /* LogPrintView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogPrintView.swift; sourceTree = "<group>"; };
+		D7C914350EF6CA2DA2C459FE /* PrintLogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrintLogView.swift; sourceTree = "<group>"; };
+		B2C3D4E5F6071829304A5B6C /* PrintFilesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrintFilesView.swift; sourceTree = "<group>"; };
+		D4E5F6071829304AB5C6D7E8 /* TimelapseCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimelapseCard.swift; sourceTree = "<group>"; };
+		17A75D7F1AC2628A84FC45FA /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		CD186D90B9CBA29455CD3919 /* ShoppingListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShoppingListView.swift; sourceTree = "<group>"; };
+		C561E846C9B127847B6EE6A6 /* ChartsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChartsView.swift; sourceTree = "<group>"; };
+		3597108D3A66A954BA8FD9EE /* PriceHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PriceHistoryView.swift; sourceTree = "<group>"; };
+		5800C33B524B693C848AB7A7 /* RestockView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RestockView.swift; sourceTree = "<group>"; };
+		09C840D46790EF0AC05C14F5 /* PrinterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrinterView.swift; sourceTree = "<group>"; };
+		A9B8C7D6E5F4321098765432 /* CameraFeedCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraFeedCard.swift; sourceTree = "<group>"; };
+		8DCE6B7A50664C0BCE4B8321 /* DashboardCustomizeSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardCustomizeSheet.swift; sourceTree = "<group>"; };
+		CE73977386F1A781A97060C8 /* GlassStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassStyle.swift; sourceTree = "<group>"; };
+		3EC4EA09CED15A71400F27B6 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		BB11CC22DD33EE44FF550011 /* PrinterManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrinterManager.swift; sourceTree = "<group>"; };
+		DD11EE22FF33AA44BB550022 /* CloudBackupService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudBackupService.swift; sourceTree = "<group>"; };
+		FF11AA22BB33CC44DD550033 /* FilamentIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilamentIntents.swift; sourceTree = "<group>"; };
+		620567A71E5CA3AB8765C812 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		FW0001AABB11CC22DD33EE01 /* FilamentWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilamentWidget.swift; sourceTree = "<group>"; };
+		FW0001AABB11CC22DD33EE02 /* FilamentWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = FilamentWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		FW0001AABB11CC22DD33EE03 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXContainerItemProxy section */
+		FW0001AABB11CC22DD33EE15 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 98F54143AB4E86B28C3AFEE0 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = FW0001AABB11CC22DD33EE08;
+			remoteInfo = FilamentWidget;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		FW0001AABB11CC22DD33EE07 /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				FW0001AABB11CC22DD33EE05 /* FilamentWidget.appex in Embed App Extensions */,
+			);
+			name = "Embed App Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		7B8633C7EB6F5CB13673C25D /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FW0001AABB11CC22DD33EE13 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		7DE2B08A3CD72166D999E5FE = {
+			isa = PBXGroup;
+			children = (
+				81B6A57DEDA76992CF92A034 /* FilamentInventory */,
+				FW0001AABB11CC22DD33EE06 /* FilamentWidget */,
+				550258979F7021997C570D6F /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		FW0001AABB11CC22DD33EE06 /* FilamentWidget */ = {
+			isa = PBXGroup;
+			children = (
+				FW0001AABB11CC22DD33EE01 /* FilamentWidget.swift */,
+				FW0001AABB11CC22DD33EE03 /* Info.plist */,
+			);
+			path = FilamentWidget;
+			sourceTree = "<group>";
+		};
+		550258979F7021997C570D6F /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				5718BA8B2965F0F686C8E55B /* FilamentInventory.app */,
+				FW0001AABB11CC22DD33EE02 /* FilamentWidget.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		81B6A57DEDA76992CF92A034 /* FilamentInventory */ = {
+			isa = PBXGroup;
+			children = (
+				AC0C955044502261170967D7 /* FilamentInventoryApp.swift */,
+				A370FF79DFBE55C52AB611D2 /* ContentView.swift */,
+				CBB4F851827C6EE4F9480055 /* Models */,
+				3440B5085CAE9E78576D6B19 /* Services */,
+				21C9D9E9162B48E6E37C8FA0 /* Views */,
+				A1B2C3D4E5F600001234ABCD /* Intents */,
+				3EC4EA09CED15A71400F27B6 /* Assets.xcassets */,
+				620567A71E5CA3AB8765C812 /* Info.plist */,
+			);
+			path = FilamentInventory;
+			sourceTree = "<group>";
+		};
+		CBB4F851827C6EE4F9480055 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				56A6A2B64E0470550379EE0C /* FilamentModel.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		3440B5085CAE9E78576D6B19 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				E9B0A4C806F68B548332BA4E /* NASService.swift */,
+				74317758A8B9AB3E5B097F8A /* InventoryStore.swift */,
+				709F4924EDD1B6593CE9C8C1 /* FilamentLookupService.swift */,
+				C3F34FAB5D6735F672A69CC3 /* NotificationManager.swift */,
+				BB11CC22DD33EE44FF550011 /* PrinterManager.swift */,
+				DD11EE22FF33AA44BB550022 /* CloudBackupService.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		A1B2C3D4E5F600001234ABCD /* Intents */ = {
+			isa = PBXGroup;
+			children = (
+				FF11AA22BB33CC44DD550033 /* FilamentIntents.swift */,
+			);
+			path = Intents;
+			sourceTree = "<group>";
+		};
+		21C9D9E9162B48E6E37C8FA0 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				6A0A35D8515B6140FDCED065 /* DashboardView.swift */,
+				F7FF0E5B0C617354C43DE679 /* InventoryListView.swift */,
+				06BF8F5DE94E5BFA6B90EE5F /* AddFilamentView.swift */,
+				D563EF76C1506B1621DFC8F8 /* BarcodeScannerView.swift */,
+				4710B1BDFC7F5DCF6AF073F5 /* FilamentDetailView.swift */,
+				6359315938D9E6BED438D07C /* LogPrintView.swift */,
+				D7C914350EF6CA2DA2C459FE /* PrintLogView.swift */,
+				B2C3D4E5F6071829304A5B6C /* PrintFilesView.swift */,
+				D4E5F6071829304AB5C6D7E8 /* TimelapseCard.swift */,
+				17A75D7F1AC2628A84FC45FA /* SettingsView.swift */,
+				CD186D90B9CBA29455CD3919 /* ShoppingListView.swift */,
+				C561E846C9B127847B6EE6A6 /* ChartsView.swift */,
+				3597108D3A66A954BA8FD9EE /* PriceHistoryView.swift */,
+				5800C33B524B693C848AB7A7 /* RestockView.swift */,
+				09C840D46790EF0AC05C14F5 /* PrinterView.swift */,
+				A9B8C7D6E5F4321098765432 /* CameraFeedCard.swift */,
+				8DCE6B7A50664C0BCE4B8321 /* DashboardCustomizeSheet.swift */,
+				CE73977386F1A781A97060C8 /* GlassStyle.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		0E8A3AD980EC179856012B7E /* FilamentInventory */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 7E884C09316D8179AAB05BB9 /* Build configuration list for PBXNativeTarget "FilamentInventory" */;
+			buildPhases = (
+				E4F78730D65EE9F55E2BAC2F /* Sources */,
+				7B8633C7EB6F5CB13673C25D /* Frameworks */,
+				C52ABA055DA4D0050382EB56 /* Resources */,
+				FW0001AABB11CC22DD33EE07 /* Embed App Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				FW0001AABB11CC22DD33EE16 /* PBXTargetDependency */,
+			);
+			name = FilamentInventory;
+			productName = FilamentInventory;
+			productReference = 5718BA8B2965F0F686C8E55B /* FilamentInventory.app */;
+			productType = "com.apple.product-type.application";
+		};
+		FW0001AABB11CC22DD33EE08 /* FilamentWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FW0001AABB11CC22DD33EE11 /* Build configuration list for PBXNativeTarget "FilamentWidget" */;
+			buildPhases = (
+				FW0001AABB11CC22DD33EE12 /* Sources */,
+				FW0001AABB11CC22DD33EE13 /* Frameworks */,
+				FW0001AABB11CC22DD33EE14 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = FilamentWidget;
+			productName = FilamentWidget;
+			productReference = FW0001AABB11CC22DD33EE02 /* FilamentWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		98F54143AB4E86B28C3AFEE0 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1500;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					0E8A3AD980EC179856012B7E = {
+						CreatedOnToolsVersion = 15.0;
+					};
+					FW0001AABB11CC22DD33EE08 = {
+						CreatedOnToolsVersion = 15.0;
+					};
+				};
+			};
+			buildConfigurationList = 0AD173BD181E07EFAEA07110 /* Build configuration list for PBXProject "FilamentInventory" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 7DE2B08A3CD72166D999E5FE;
+			productRefGroup = 550258979F7021997C570D6F /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				0E8A3AD980EC179856012B7E /* FilamentInventory */,
+				FW0001AABB11CC22DD33EE08 /* FilamentWidget */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		C52ABA055DA4D0050382EB56 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				76799C555F79C18C47A7AE65 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FW0001AABB11CC22DD33EE14 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		FW0001AABB11CC22DD33EE16 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = FW0001AABB11CC22DD33EE08 /* FilamentWidget */;
+			targetProxy = FW0001AABB11CC22DD33EE15 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin PBXSourcesBuildPhase section */
+		FW0001AABB11CC22DD33EE12 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FW0001AABB11CC22DD33EE04 /* FilamentWidget.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E4F78730D65EE9F55E2BAC2F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0100BABACC730CF793595D1D /* FilamentInventoryApp.swift in Sources */,
+				975DB069E4A3B0D488D8ED5A /* ContentView.swift in Sources */,
+				1B856FF4F79A9F225AE5646D /* FilamentModel.swift in Sources */,
+				328D1F278345EEF2B5DE4FA0 /* NASService.swift in Sources */,
+				6EA5D8E2932EB51F2D851C71 /* InventoryStore.swift in Sources */,
+				E3E3F81AD601AA0F843B3068 /* FilamentLookupService.swift in Sources */,
+				5D5E1D5DB666A41BA038B4CA /* NotificationManager.swift in Sources */,
+				2DCB4B287D3212F3343D04D2 /* DashboardView.swift in Sources */,
+				56183D7779F560DE79FC26F0 /* InventoryListView.swift in Sources */,
+				09AC6FC551E2958491A90494 /* AddFilamentView.swift in Sources */,
+				A6FF9B3E9C59EFC3478693A6 /* BarcodeScannerView.swift in Sources */,
+				7F079ED50837259989E70742 /* FilamentDetailView.swift in Sources */,
+				8CBD536B5011040543B7AFCF /* LogPrintView.swift in Sources */,
+				DC959868A91885676C1DF0AA /* PrintLogView.swift in Sources */,
+				A1B2C3D4E5F60718293A4B5C /* PrintFilesView.swift in Sources */,
+				C3D4E5F607182930A4B5C6D7 /* TimelapseCard.swift in Sources */,
+				05EF7B1875C5B505D58F4EE8 /* SettingsView.swift in Sources */,
+				2B7300BB3849B3CD5F41F94A /* ShoppingListView.swift in Sources */,
+				42DCDF678697BEFF51F14D94 /* ChartsView.swift in Sources */,
+				93160D2EB7562BFA7A599ECE /* PriceHistoryView.swift in Sources */,
+				B6C08DB51CB9A9D5881C0DEF /* RestockView.swift in Sources */,
+				8CEA8B5C5547BB4023EA91DF /* PrinterView.swift in Sources */,
+				F4A2C1D3E5B6784901234567 /* CameraFeedCard.swift in Sources */,
+				7ABF4DC898A28448828D4932 /* DashboardCustomizeSheet.swift in Sources */,
+				DBCAEEA75CD1232B9E0E69D5 /* GlassStyle.swift in Sources */,
+				AA11BB22CC33DD44EE55FF01 /* PrinterManager.swift in Sources */,
+				CC11DD22EE33FF44AA550022 /* CloudBackupService.swift in Sources */,
+				EE11FF22AA33BB44CC550033 /* FilamentIntents.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		F942A8A84E6EA57CEDA17E13 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		698620892CC05B3078DD0931 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		18DCB30A68F4AFA5DA444758 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = FilamentInventory/FilamentInventory.entitlements;
+				CODE_SIGN_IDENTITY = "";
+				CODE_SIGN_STYLE = Manual;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = FilamentInventory/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.pansketo.filamentinventory;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		4E31F9F05639A422599E8F78 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = FilamentInventory/FilamentInventory.entitlements;
+				CODE_SIGN_IDENTITY = "";
+				CODE_SIGN_STYLE = Manual;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = FilamentInventory/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.pansketo.filamentinventory;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		FW0001AABB11CC22DD33EE09 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = FilamentWidget/FilamentWidget.entitlements;
+				CODE_SIGN_IDENTITY = "";
+				CODE_SIGN_STYLE = Manual;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = FilamentWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.pansketo.filamentinventory.widget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		FW0001AABB11CC22DD33EE10 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = FilamentWidget/FilamentWidget.entitlements;
+				CODE_SIGN_IDENTITY = "";
+				CODE_SIGN_STYLE = Manual;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = FilamentWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.pansketo.filamentinventory.widget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		0AD173BD181E07EFAEA07110 /* Build configuration list for PBXProject "FilamentInventory" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F942A8A84E6EA57CEDA17E13 /* Debug */,
+				698620892CC05B3078DD0931 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		7E884C09316D8179AAB05BB9 /* Build configuration list for PBXNativeTarget "FilamentInventory" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				18DCB30A68F4AFA5DA444758 /* Debug */,
+				4E31F9F05639A422599E8F78 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		FW0001AABB11CC22DD33EE11 /* Build configuration list for PBXNativeTarget "FilamentWidget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				FW0001AABB11CC22DD33EE09 /* Debug */,
+				FW0001AABB11CC22DD33EE10 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+	};
+	rootObject = 98F54143AB4E86B28C3AFEE0 /* Project object */;
+}

@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  # ── Main API backend ──────────────────────────────────────────────────────────
+  filament-backend:
+    image: node:20-alpine
+    container_name: filament-inventory-backend
+    working_dir: /app
+    volumes:
+      - ./NAS-Backend:/app                    # mount the actual source directory
+      - ./data:/app/data                      # bind-mount: data lives on NAS disk, survives container deletion
+      - backend_modules:/app/node_modules
+    command: sh -c "apk add --no-cache ffmpeg && (npm install --prefer-offline 2>/dev/null || npm install) && node server.js"
+    ports:
+      - "3456:3456"
+    environment:
+      - PORT=3456
+      - API_KEY=REDACTED-API-KEY
+      - DB_PATH=/app/data/filaments.db
+      - PRINTER_IP=REDACTED-PRINTER-IP
+      - PRINTER_SERIAL=REDACTED-SERIAL
+      - PRINTER_ACCESS_CODE=REDACTED-ACCESS-CODE
+      - BASE_URL=http://REDACTED-DDNS:3456
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3456/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ── Bambu Lab MQTT Bridge ─────────────────────────────────────────────────────
+  mqtt-bridge:
+    image: node:20-alpine
+    container_name: filament-mqtt-bridge
+    working_dir: /app/mqtt-bridge
+    volumes:
+      - ./NAS-Backend:/app                    # mount the actual source directory
+      - ./data:/app/data                      # same bind-mount so bridge reads the same DB
+      - bridge_modules:/app/mqtt-bridge/node_modules
+    command: sh -c "npm install --prefer-offline 2>/dev/null || npm install && node bridge.js"
+    environment:
+      - PRINTER_IP=REDACTED-PRINTER-IP
+      - PRINTER_SERIAL=REDACTED-SERIAL
+      - PRINTER_ACCESS_CODE=REDACTED-ACCESS-CODE
+      - DB_PATH=/app/data/filaments.db
+      - API_KEY=REDACTED-API-KEY
+    restart: unless-stopped
+    depends_on:
+      - filament-backend
+
+volumes:
+  backend_modules:
+    driver: local
+  bridge_modules:
+    driver: local
