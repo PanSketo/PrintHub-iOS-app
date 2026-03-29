@@ -1,30 +1,11 @@
 import WidgetKit
 import SwiftUI
-import AppIntents
 
-// MARK: - Configuration Intent (iOS 17+)
+// MARK: - Shared keys (must match NASService)
 
-@available(iOS 17.0, *)
-struct FilamentWidgetIntent: AppIntent, WidgetConfigurationIntent {
-    static var title: LocalizedStringResource = "Printer Connection"
-    static var description = IntentDescription("Set your NAS URL and API key.")
-
-    @Parameter(title: "NAS URL")
-    var nasURL: String
-
-    @Parameter(title: "API Key")
-    var apiKey: String
-
-    init() {
-        self.nasURL = ""
-        self.apiKey = ""
-    }
-
-    init(nasURL: String, apiKey: String) {
-        self.nasURL = nasURL
-        self.apiKey = apiKey
-    }
-}
+private let appGroupSuite  = "group.com.pansketo.filamentinventory"
+private let baseURLKey     = "nas_base_url"
+private let apiKeyKey      = "nas_api_key"
 
 // MARK: - Data Model
 
@@ -40,14 +21,17 @@ struct PrintEntry: TimelineEntry {
 
 // MARK: - Network helper
 
-private func fetchPrinterEntry(nasURL: String, apiKey: String) async -> PrintEntry {
-    let baseURL = nasURL.trimmingCharacters(in: .whitespaces)
+private func fetchPrinterEntry() async -> PrintEntry {
+    let suite   = UserDefaults(suiteName: appGroupSuite)
+    let baseURL = (suite?.string(forKey: baseURLKey) ?? "").trimmingCharacters(in: .whitespaces)
+    let apiKey  = (suite?.string(forKey: apiKeyKey)  ?? "").trimmingCharacters(in: .whitespaces)
+
     guard !baseURL.isEmpty, let url = URL(string: "\(baseURL)/api/printer/state") else {
         return PrintEntry(date: Date(), status: "IDLE", printName: "",
                           progress: 0, remainingMinutes: 0, isConnected: false, isConfigured: false)
     }
     var request = URLRequest(url: url)
-    request.addValue(apiKey.trimmingCharacters(in: .whitespaces), forHTTPHeaderField: "X-API-Key")
+    request.addValue(apiKey, forHTTPHeaderField: "X-API-Key")
     request.timeoutInterval = 10
     do {
         let (data, _) = try await URLSession.shared.data(for: request)
@@ -75,22 +59,23 @@ private func nextRefresh(for entry: PrintEntry) -> Date {
     return Date().addingTimeInterval(interval)
 }
 
-// MARK: - AppIntentTimelineProvider (iOS 17+)
+// MARK: - Static Timeline Provider
 
-@available(iOS 17.0, *)
-struct IntentFilamentProvider: AppIntentTimelineProvider {
+struct FilamentProvider: TimelineProvider {
     func placeholder(in context: Context) -> PrintEntry {
         PrintEntry(date: Date(), status: "RUNNING", printName: "Benchy.3mf",
                    progress: 42, remainingMinutes: 75, isConnected: true, isConfigured: true)
     }
 
-    func snapshot(for configuration: FilamentWidgetIntent, in context: Context) async -> PrintEntry {
-        await fetchPrinterEntry(nasURL: configuration.nasURL, apiKey: configuration.apiKey)
+    func getSnapshot(in context: Context, completion: @escaping (PrintEntry) -> Void) {
+        Task { completion(await fetchPrinterEntry()) }
     }
 
-    func timeline(for configuration: FilamentWidgetIntent, in context: Context) async -> Timeline<PrintEntry> {
-        let entry = await fetchPrinterEntry(nasURL: configuration.nasURL, apiKey: configuration.apiKey)
-        return Timeline(entries: [entry], policy: .after(nextRefresh(for: entry)))
+    func getTimeline(in context: Context, completion: @escaping (Timeline<PrintEntry>) -> Void) {
+        Task {
+            let entry = await fetchPrinterEntry()
+            completion(Timeline(entries: [entry], policy: .after(nextRefresh(for: entry))))
+        }
     }
 }
 
@@ -133,13 +118,13 @@ struct FilamentWidgetView: View {
                     .foregroundColor(statusColor)
                 Spacer()
                 Circle()
-                    .fill(entry.isConnected ? Color.green : Color.red)
+                    .fill(entry.isConnected ? Color.green : Color.gray)
                     .frame(width: 7, height: 7)
             }
 
             if !entry.isConfigured {
                 Spacer()
-                Text("Hold widget → Edit Widget\nto set NAS URL")
+                Text("Open PrintHub\nto configure NAS")
                     .font(.caption2)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
@@ -205,19 +190,18 @@ private struct WidgetBackgroundModifier: ViewModifier {
     }
 }
 
-// MARK: - Widget + Entry Point
+// MARK: - Widget Entry Point
 
 @main
 struct FilamentWidget: Widget {
     let kind = "FilamentWidget"
 
     var body: some WidgetConfiguration {
-        AppIntentConfiguration(kind: kind, intent: FilamentWidgetIntent.self,
-                               provider: IntentFilamentProvider()) { entry in
+        StaticConfiguration(kind: kind, provider: FilamentProvider()) { entry in
             FilamentWidgetView(entry: entry)
         }
         .configurationDisplayName("Print Progress")
-        .description("Live 3D print progress. Hold → Edit Widget to enter NAS URL.")
+        .description("Live 3D print progress. Configure NAS in the PrintHub app.")
         .supportedFamilies([.systemSmall, .systemMedium])
     }
 }
