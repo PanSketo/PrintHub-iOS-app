@@ -36,6 +36,7 @@
 		AA11BB22CC33DD44EE55FF01 /* PrinterManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB11CC22DD33EE44FF550011 /* PrinterManager.swift */; };
 		CC11DD22EE33FF44AA550022 /* CloudBackupService.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD11EE22FF33AA44BB550022 /* CloudBackupService.swift */; };
 		EE11FF22AA33BB44CC550033 /* FilamentIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF11AA22BB33CC44DD550033 /* FilamentIntents.swift */; };
+		AB11CD22EF33450678AB1100 /* NASKeychainBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB11CD22EF33450678AB1101 /* NASKeychainBridge.swift */; };
 		FW0001AABB11CC22DD33EE04 /* FilamentWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = FW0001AABB11CC22DD33EE01 /* FilamentWidget.swift */; };
 		FW0001AABB11CC22DD33EE05 /* FilamentWidget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = FW0001AABB11CC22DD33EE02 /* FilamentWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
@@ -71,6 +72,7 @@
 		BB11CC22DD33EE44FF550011 /* PrinterManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrinterManager.swift; sourceTree = "<group>"; };
 		DD11EE22FF33AA44BB550022 /* CloudBackupService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudBackupService.swift; sourceTree = "<group>"; };
 		FF11AA22BB33CC44DD550033 /* FilamentIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilamentIntents.swift; sourceTree = "<group>"; };
+		AB11CD22EF33450678AB1101 /* NASKeychainBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NASKeychainBridge.swift; sourceTree = "<group>"; };
 		620567A71E5CA3AB8765C812 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		FW0001AABB11CC22DD33EE01 /* FilamentWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilamentWidget.swift; sourceTree = "<group>"; };
 		FW0001AABB11CC22DD33EE02 /* FilamentWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = FilamentWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -173,6 +175,7 @@
 			isa = PBXGroup;
 			children = (
 				E9B0A4C806F68B548332BA4E /* NASService.swift */,
+				AB11CD22EF33450678AB1101 /* NASKeychainBridge.swift */,
 				74317758A8B9AB3E5B097F8A /* InventoryStore.swift */,
 				709F4924EDD1B6593CE9C8C1 /* FilamentLookupService.swift */,
 				C3F34FAB5D6735F672A69CC3 /* NotificationManager.swift */,
@@ -358,6 +361,7 @@
 				AA11BB22CC33DD44EE55FF01 /* PrinterManager.swift in Sources */,
 				CC11DD22EE33FF44AA550022 /* CloudBackupService.swift in Sources */,
 				EE11FF22AA33BB44CC550033 /* FilamentIntents.swift in Sources */,
+				AB11CD22EF33450678AB1100 /* NASKeychainBridge.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

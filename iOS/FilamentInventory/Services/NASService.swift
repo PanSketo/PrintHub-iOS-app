@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import Security
 
 class NASService: ObservableObject {
     static let shared = NASService()
@@ -23,6 +24,7 @@ class NASService: ObservableObject {
             defaults.set(newValue, forKey: baseURLKey)
             UserDefaults(suiteName: appGroupSuite)?.set(newValue, forKey: baseURLKey)
             isConfigured = !newValue.isEmpty
+            NASKeychainBridge.save(url: newValue, key: defaults.string(forKey: apiKeyKey) ?? "")
         }
     }
 
@@ -31,6 +33,7 @@ class NASService: ObservableObject {
         set {
             defaults.set(newValue, forKey: apiKeyKey)
             UserDefaults(suiteName: appGroupSuite)?.set(newValue, forKey: apiKeyKey)
+            NASKeychainBridge.save(url: defaults.string(forKey: baseURLKey) ?? "", key: newValue)
         }
     }
 
@@ -40,14 +43,15 @@ class NASService: ObservableObject {
         self.session = URLSession(configuration: config)
         isConfigured = !defaults.string(forKey: baseURLKey).isNilOrEmpty
 
-        // Mirror current values to App Group so the widget can always read them,
-        // even if they were saved before widget support was added.
+        // Mirror current values to App Group + Keychain so widget can always read them.
+        let url = defaults.string(forKey: baseURLKey) ?? ""
+        let key = defaults.string(forKey: apiKeyKey) ?? ""
         let suite = UserDefaults(suiteName: appGroupSuite)
-        if let url = defaults.string(forKey: baseURLKey), !url.isEmpty {
-            suite?.set(url, forKey: baseURLKey)
-        }
-        if let key = defaults.string(forKey: apiKeyKey), !key.isEmpty {
-            suite?.set(key, forKey: apiKeyKey)
+        if !url.isEmpty { suite?.set(url, forKey: baseURLKey) }
+        if !key.isEmpty { suite?.set(key, forKey: apiKeyKey) }
+        // Keychain is shared between app and widget extension by default team ID
+        if !url.isEmpty || !key.isEmpty {
+            NASKeychainBridge.save(url: url, key: key)
         }
 
         // Auto-connect immediately on launch if already configured
