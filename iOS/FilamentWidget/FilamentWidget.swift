@@ -1,37 +1,65 @@
 import WidgetKit
 import SwiftUI
-import AppIntents
+import Security
 
-// MARK: - Widget-local credential cache (widget extension's own UserDefaults)
-// These keys are private to the widget process — independent of App Groups.
+// MARK: - Credential resolution
+// Priority order: Keychain (shared with main app) → App Group → own cache
 
-private let kWidgetURL = "widget_nas_url"
-private let kWidgetKey = "widget_api_key"
+private let kWidgetURL    = "widget_nas_url"
+private let kWidgetKey    = "widget_nas_key"
+private let kKeychainSvc  = "PrintHubNASConfig"
+private let kKeychainAcct = "nas_credentials"
+private let kAppGroupSuite = "group.com.pansketo.filamentinventory"
+private let kGroupURL      = "nas_base_url"
+private let kGroupKey      = "nas_api_key"
 
-// MARK: - Configuration Intent
+/// Reads the NAS credentials written by the main app.
+/// App extensions automatically inherit access to the containing app's
+/// default Keychain group (same Team ID) — no entitlement needed.
+private func keychainLoad() -> (url: String, key: String)? {
+    let query: [CFString: Any] = [
+        kSecClass:       kSecClassGenericPassword,
+        kSecAttrService: kKeychainSvc  as CFString,
+        kSecAttrAccount: kKeychainAcct as CFString,
+        kSecReturnData:  true,
+        kSecMatchLimit:  kSecMatchLimitOne,
+    ]
+    var item: AnyObject?
+    guard SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess,
+          let data = item as? Data,
+          let str  = String(data: data, encoding: .utf8)
+    else { return nil }
 
-@available(iOS 17.0, *)
-struct FilamentWidgetIntent: AppIntent, WidgetConfigurationIntent {
-    static var title: LocalizedStringResource = "Printer Connection"
-    static var description = IntentDescription("Enter your NAS URL and API key.")
+    let parts = str.split(separator: "\n", maxSplits: 1, omittingEmptySubsequences: false)
+    let url   = parts.count > 0 ? String(parts[0]).trimmingCharacters(in: .whitespacesAndNewlines) : ""
+    let key   = parts.count > 1 ? String(parts[1]).trimmingCharacters(in: .whitespacesAndNewlines) : ""
+    return url.isEmpty && key.isEmpty ? nil : (url, key)
+}
 
-    @Parameter(title: "NAS URL", default: "")
-    var nasURL: String
-
-    @Parameter(title: "API Key", default: "")
-    var apiKey: String
-
-    init() {
-        // Pre-fill from widget's own cached values so the user sees their
-        // previous entries when they open Edit Widget again.
-        self.nasURL = UserDefaults.standard.string(forKey: kWidgetURL) ?? ""
-        self.apiKey = UserDefaults.standard.string(forKey: kWidgetKey) ?? ""
+private func resolveCredentials() -> (url: String, key: String) {
+    // 1. Keychain (set by main app; shared automatically with extension)
+    if let kc = keychainLoad(), !kc.url.isEmpty {
+        // Cache locally so we have them even if Keychain is briefly unavailable
+        UserDefaults.standard.set(kc.url, forKey: kWidgetURL)
+        UserDefaults.standard.set(kc.key, forKey: kWidgetKey)
+        return kc
     }
 
-    init(nasURL: String, apiKey: String) {
-        self.nasURL = nasURL
-        self.apiKey = apiKey
+    // 2. Widget's own UserDefaults (populated on previous successful Keychain read)
+    let cachedURL = (UserDefaults.standard.string(forKey: kWidgetURL) ?? "")
+                        .trimmingCharacters(in: .whitespacesAndNewlines)
+    let cachedKey = (UserDefaults.standard.string(forKey: kWidgetKey) ?? "")
+                        .trimmingCharacters(in: .whitespacesAndNewlines)
+    if !cachedURL.isEmpty { return (cachedURL, cachedKey) }
+
+    // 3. App Group UserDefaults (works when properly signed / not sideloaded)
+    if let suite = UserDefaults(suiteName: kAppGroupSuite) {
+        let groupURL = (suite.string(forKey: kGroupURL) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let groupKey = (suite.string(forKey: kGroupKey) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        if !groupURL.isEmpty { return (groupURL, groupKey) }
     }
+
+    return ("", "")
 }
 
 // MARK: - Data Model
@@ -46,44 +74,22 @@ struct PrintEntry: TimelineEntry {
     let isConfigured: Bool
 }
 
-// MARK: - Resolve credentials (intent → widget cache → app group)
-
-private func resolveCredentials(intentURL: String, intentKey: String) -> (url: String, key: String) {
-    var url = intentURL.trimmingCharacters(in: .whitespaces)
-    var key = intentKey.trimmingCharacters(in: .whitespaces)
-
-    // Persist non-empty intent values into widget-local storage
-    if !url.isEmpty { UserDefaults.standard.set(url, forKey: kWidgetURL) }
-    if !key.isEmpty { UserDefaults.standard.set(key, forKey: kWidgetKey) }
-
-    // Fall back to widget-local cache
-    if url.isEmpty { url = UserDefaults.standard.string(forKey: kWidgetURL) ?? "" }
-    if key.isEmpty { key = UserDefaults.standard.string(forKey: kWidgetKey) ?? "" }
-
-    // Last resort: App Group shared by main app (works when properly signed)
-    if url.isEmpty,
-       let suite = UserDefaults(suiteName: "group.com.pansketo.filamentinventory") {
-        url = suite.string(forKey: "nas_base_url") ?? ""
-        key = suite.string(forKey: "nas_api_key") ?? ""
-    }
-
-    return (url, key)
-}
-
 // MARK: - Network fetch
 
-private func fetchPrinterEntry(intentURL: String = "", intentKey: String = "") async -> PrintEntry {
-    let (baseURL, apiKey) = resolveCredentials(intentURL: intentURL, intentKey: intentKey)
+private func fetchPrinterEntry() async -> PrintEntry {
+    let (baseURL, apiKey) = resolveCredentials()
 
-    guard !baseURL.isEmpty, let url = URL(string: "\(baseURL)/api/printer/state") else {
+    guard !baseURL.isEmpty,
+          let url = URL(string: "\(baseURL)/api/printer/state") else {
         return PrintEntry(date: Date(), status: "IDLE", printName: "",
-                          progress: 0, remainingMinutes: 0, isConnected: false, isConfigured: false)
+                          progress: 0, remainingMinutes: 0,
+                          isConnected: false, isConfigured: false)
     }
-    var request = URLRequest(url: url)
-    request.addValue(apiKey, forHTTPHeaderField: "X-API-Key")
-    request.timeoutInterval = 10
+    var req = URLRequest(url: url)
+    req.addValue(apiKey, forHTTPHeaderField: "X-API-Key")
+    req.timeoutInterval = 10
     do {
-        let (data, _) = try await URLSession.shared.data(for: request)
+        let (data, _) = try await URLSession.shared.data(for: req)
         if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
             let connected = json["connected"] as? Bool ?? false
             let live      = json["live"] as? [String: Any]
@@ -91,8 +97,8 @@ private func fetchPrinterEntry(intentURL: String = "", intentKey: String = "") a
             return PrintEntry(
                 date: Date(),
                 status: status,
-                printName: live?["print_name"] as? String ?? "",
-                progress: live?["progress"] as? Int ?? 0,
+                printName: live?["print_name"]        as? String ?? "",
+                progress:  live?["progress"]          as? Int    ?? 0,
                 remainingMinutes: live?["remaining_minutes"] as? Int ?? 0,
                 isConnected: connected,
                 isConfigured: true
@@ -100,31 +106,34 @@ private func fetchPrinterEntry(intentURL: String = "", intentKey: String = "") a
         }
     } catch {}
     return PrintEntry(date: Date(), status: "IDLE", printName: "",
-                      progress: 0, remainingMinutes: 0, isConnected: false, isConfigured: true)
+                      progress: 0, remainingMinutes: 0,
+                      isConnected: false, isConfigured: true)
 }
 
 private func nextRefresh(for entry: PrintEntry) -> Date {
-    let interval: TimeInterval = (entry.status == "RUNNING" || entry.status == "PAUSE") ? 60 : 300
-    return Date().addingTimeInterval(interval)
+    let mins: Double = (entry.status == "RUNNING" || entry.status == "PAUSE") ? 1 : 5
+    return Date().addingTimeInterval(mins * 60)
 }
 
-// MARK: - AppIntentTimelineProvider (iOS 17+)
+// MARK: - Static Provider
 
-@available(iOS 17.0, *)
-struct IntentFilamentProvider: AppIntentTimelineProvider {
+struct FilamentProvider: TimelineProvider {
     func placeholder(in context: Context) -> PrintEntry {
-        // Use a "neutral" placeholder so iOS redaction isn't misleading
         PrintEntry(date: Date(), status: "IDLE", printName: "",
-                   progress: 0, remainingMinutes: 0, isConnected: false, isConfigured: true)
+                   progress: 0, remainingMinutes: 0,
+                   isConnected: false, isConfigured: true)
     }
 
-    func snapshot(for configuration: FilamentWidgetIntent, in context: Context) async -> PrintEntry {
-        await fetchPrinterEntry(intentURL: configuration.nasURL, intentKey: configuration.apiKey)
+    func getSnapshot(in context: Context, completion: @escaping (PrintEntry) -> Void) {
+        Task { completion(await fetchPrinterEntry()) }
     }
 
-    func timeline(for configuration: FilamentWidgetIntent, in context: Context) async -> Timeline<PrintEntry> {
-        let entry = await fetchPrinterEntry(intentURL: configuration.nasURL, intentKey: configuration.apiKey)
-        return Timeline(entries: [entry], policy: .after(nextRefresh(for: entry)))
+    func getTimeline(in context: Context, completion: @escaping (Timeline<PrintEntry>) -> Void) {
+        Task {
+            let entry = await fetchPrinterEntry()
+            let nextDate = nextRefresh(for: entry)
+            completion(Timeline(entries: [entry], policy: .after(nextDate)))
+        }
     }
 }
 
@@ -173,7 +182,7 @@ struct FilamentWidgetView: View {
 
             if !entry.isConfigured {
                 Spacer()
-                Text("Hold widget\n→ Edit Widget\nto set NAS URL")
+                Text("Open PrintHub\nto activate widget")
                     .font(.caption2)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
@@ -227,7 +236,7 @@ struct FilamentWidgetView: View {
     }
 }
 
-// MARK: - iOS 16/17 background compatibility
+// MARK: - Background compat
 
 private struct WidgetBackgroundModifier: ViewModifier {
     func body(content: Content) -> some View {
@@ -239,19 +248,18 @@ private struct WidgetBackgroundModifier: ViewModifier {
     }
 }
 
-// MARK: - Widget Entry Point
+// MARK: - Entry Point
 
 @main
 struct FilamentWidget: Widget {
     let kind = "FilamentWidget"
 
     var body: some WidgetConfiguration {
-        AppIntentConfiguration(kind: kind, intent: FilamentWidgetIntent.self,
-                               provider: IntentFilamentProvider()) { entry in
+        StaticConfiguration(kind: kind, provider: FilamentProvider()) { entry in
             FilamentWidgetView(entry: entry)
         }
         .configurationDisplayName("Print Progress")
-        .description("Live 3D print progress. Hold → Edit Widget to enter NAS URL & API Key.")
+        .description("Live 3D print progress. Open PrintHub once to activate.")
         .supportedFamilies([.systemSmall, .systemMedium])
     }
 }
