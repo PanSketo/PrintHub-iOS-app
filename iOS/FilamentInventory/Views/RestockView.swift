@@ -32,7 +32,7 @@ struct RestockView: View {
     var totalCost: Double { parsedPrice * Double(numberOfSpools) }
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ScrollView {
                 VStack(spacing: 16) {
 
@@ -64,7 +64,7 @@ struct RestockView: View {
                         .padding()
                         .background(Color.orange)
                         .foregroundColor(.white)
-                        .cornerRadius(14)
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)

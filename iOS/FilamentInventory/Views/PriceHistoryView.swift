@@ -97,7 +97,7 @@ struct PriceHistoryView: View {
     }
 
     var addPriceSheet: some View {
-        NavigationView {
+        NavigationStack {
             Form {
                 Section {
                     HStack {

@@ -14,7 +14,7 @@ struct LogPrintView: View {
     @State private var success = true
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Form {
                 Section {
                     HStack {
@@ -150,7 +150,7 @@ struct EditFilamentView: View {
     @State private var imageURL: String = ""
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Form {
                 Section {
                     HStack {

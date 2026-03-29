@@ -5,7 +5,7 @@ struct DashboardCustomizeSheet: View {
     @Environment(\.dismiss) var dismiss
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             List {
                 Section {
                     ForEach($layout.cards, id: \.id) { $config in

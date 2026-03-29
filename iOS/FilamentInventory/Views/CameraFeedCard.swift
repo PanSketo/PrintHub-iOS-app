@@ -278,7 +278,7 @@ struct CameraFeedCard: View {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 11)
                         .background(Color.red.opacity(0.12))
-                        .cornerRadius(10)
+                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 }
             } else {
                 Button { streamer.start(baseURL: nasService.baseURL, apiKey: nasService.apiKey) } label: {
@@ -288,7 +288,7 @@ struct CameraFeedCard: View {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 11)
                         .background(Color.blue)
-                        .cornerRadius(10)
+                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 }
             }
 
@@ -305,7 +305,7 @@ struct CameraFeedCard: View {
                 }
                 .frame(width: 44, height: 44)
                 .background(lightOn ? Color.yellow.opacity(0.15) : Color.white.opacity(0.08))
-                .cornerRadius(10)
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
             }
             .disabled(lightBusy || !nasService.isConnected)
         }
