@@ -40,7 +40,7 @@ struct FilamentInventoryApp: App {
                     }
                 }
         }
-        .onChange(of: scenePhase) { _, phase in
+        .onChange(of: scenePhase) { phase in
             if phase == .active && nasService.isConfigured {
                 Task {
                     await nasService.autoConnect()

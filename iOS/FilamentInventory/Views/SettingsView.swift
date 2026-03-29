@@ -166,7 +166,7 @@ struct SettingsView: View {
                         }
                         Slider(value: $lowStockThreshold, in: 50...500, step: 25)
                             .tint(.orange)
-                            .onChange(of: lowStockThreshold) { _, val in
+                            .onChange(of: lowStockThreshold) { val in
                                 store.lowStockThreshold = val
                                 UserDefaults.standard.set(val, forKey: "low_stock_threshold")
                             }
