@@ -1,6 +1,6 @@
 workflows:
   ios-release:
-    name: Filament Inventory - Build IPA
+    name: PrintHub - Build IPA
     max_build_duration: 60
     instance_type: mac_mini_m1
 
@@ -62,7 +62,7 @@ workflows:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
             PRODUCT_BUNDLE_IDENTIFIER=$BUNDLE_ID \
-            archive | xcpretty
+            archive
 
       - name: Export IPA from archive
         script: |
