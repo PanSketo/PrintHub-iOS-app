@@ -1,11 +1,38 @@
 import WidgetKit
 import SwiftUI
+import AppIntents
 
-// MARK: - Shared keys (must match NASService)
+// MARK: - Widget-local credential cache (widget extension's own UserDefaults)
+// These keys are private to the widget process — independent of App Groups.
 
-private let appGroupSuite  = "group.com.pansketo.filamentinventory"
-private let baseURLKey     = "nas_base_url"
-private let apiKeyKey      = "nas_api_key"
+private let kWidgetURL = "widget_nas_url"
+private let kWidgetKey = "widget_api_key"
+
+// MARK: - Configuration Intent
+
+@available(iOS 17.0, *)
+struct FilamentWidgetIntent: AppIntent, WidgetConfigurationIntent {
+    static var title: LocalizedStringResource = "Printer Connection"
+    static var description = IntentDescription("Enter your NAS URL and API key.")
+
+    @Parameter(title: "NAS URL", default: "")
+    var nasURL: String
+
+    @Parameter(title: "API Key", default: "")
+    var apiKey: String
+
+    init() {
+        // Pre-fill from widget's own cached values so the user sees their
+        // previous entries when they open Edit Widget again.
+        self.nasURL = UserDefaults.standard.string(forKey: kWidgetURL) ?? ""
+        self.apiKey = UserDefaults.standard.string(forKey: kWidgetKey) ?? ""
+    }
+
+    init(nasURL: String, apiKey: String) {
+        self.nasURL = nasURL
+        self.apiKey = apiKey
+    }
+}
 
 // MARK: - Data Model
 
@@ -19,12 +46,34 @@ struct PrintEntry: TimelineEntry {
     let isConfigured: Bool
 }
 
-// MARK: - Network helper
+// MARK: - Resolve credentials (intent → widget cache → app group)
 
-private func fetchPrinterEntry() async -> PrintEntry {
-    let suite   = UserDefaults(suiteName: appGroupSuite)
-    let baseURL = (suite?.string(forKey: baseURLKey) ?? "").trimmingCharacters(in: .whitespaces)
-    let apiKey  = (suite?.string(forKey: apiKeyKey)  ?? "").trimmingCharacters(in: .whitespaces)
+private func resolveCredentials(intentURL: String, intentKey: String) -> (url: String, key: String) {
+    var url = intentURL.trimmingCharacters(in: .whitespaces)
+    var key = intentKey.trimmingCharacters(in: .whitespaces)
+
+    // Persist non-empty intent values into widget-local storage
+    if !url.isEmpty { UserDefaults.standard.set(url, forKey: kWidgetURL) }
+    if !key.isEmpty { UserDefaults.standard.set(key, forKey: kWidgetKey) }
+
+    // Fall back to widget-local cache
+    if url.isEmpty { url = UserDefaults.standard.string(forKey: kWidgetURL) ?? "" }
+    if key.isEmpty { key = UserDefaults.standard.string(forKey: kWidgetKey) ?? "" }
+
+    // Last resort: App Group shared by main app (works when properly signed)
+    if url.isEmpty,
+       let suite = UserDefaults(suiteName: "group.com.pansketo.filamentinventory") {
+        url = suite.string(forKey: "nas_base_url") ?? ""
+        key = suite.string(forKey: "nas_api_key") ?? ""
+    }
+
+    return (url, key)
+}
+
+// MARK: - Network fetch
+
+private func fetchPrinterEntry(intentURL: String = "", intentKey: String = "") async -> PrintEntry {
+    let (baseURL, apiKey) = resolveCredentials(intentURL: intentURL, intentKey: intentKey)
 
     guard !baseURL.isEmpty, let url = URL(string: "\(baseURL)/api/printer/state") else {
         return PrintEntry(date: Date(), status: "IDLE", printName: "",
@@ -59,23 +108,23 @@ private func nextRefresh(for entry: PrintEntry) -> Date {
     return Date().addingTimeInterval(interval)
 }
 
-// MARK: - Static Timeline Provider
+// MARK: - AppIntentTimelineProvider (iOS 17+)
 
-struct FilamentProvider: TimelineProvider {
+@available(iOS 17.0, *)
+struct IntentFilamentProvider: AppIntentTimelineProvider {
     func placeholder(in context: Context) -> PrintEntry {
-        PrintEntry(date: Date(), status: "RUNNING", printName: "Benchy.3mf",
-                   progress: 42, remainingMinutes: 75, isConnected: true, isConfigured: true)
+        // Use a "neutral" placeholder so iOS redaction isn't misleading
+        PrintEntry(date: Date(), status: "IDLE", printName: "",
+                   progress: 0, remainingMinutes: 0, isConnected: false, isConfigured: true)
     }
 
-    func getSnapshot(in context: Context, completion: @escaping (PrintEntry) -> Void) {
-        Task { completion(await fetchPrinterEntry()) }
+    func snapshot(for configuration: FilamentWidgetIntent, in context: Context) async -> PrintEntry {
+        await fetchPrinterEntry(intentURL: configuration.nasURL, intentKey: configuration.apiKey)
     }
 
-    func getTimeline(in context: Context, completion: @escaping (Timeline<PrintEntry>) -> Void) {
-        Task {
-            let entry = await fetchPrinterEntry()
-            completion(Timeline(entries: [entry], policy: .after(nextRefresh(for: entry))))
-        }
+    func timeline(for configuration: FilamentWidgetIntent, in context: Context) async -> Timeline<PrintEntry> {
+        let entry = await fetchPrinterEntry(intentURL: configuration.nasURL, intentKey: configuration.apiKey)
+        return Timeline(entries: [entry], policy: .after(nextRefresh(for: entry)))
     }
 }
 
@@ -124,7 +173,7 @@ struct FilamentWidgetView: View {
 
             if !entry.isConfigured {
                 Spacer()
-                Text("Open PrintHub\nto configure NAS")
+                Text("Hold widget\n→ Edit Widget\nto set NAS URL")
                     .font(.caption2)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
@@ -197,11 +246,12 @@ struct FilamentWidget: Widget {
     let kind = "FilamentWidget"
 
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: FilamentProvider()) { entry in
+        AppIntentConfiguration(kind: kind, intent: FilamentWidgetIntent.self,
+                               provider: IntentFilamentProvider()) { entry in
             FilamentWidgetView(entry: entry)
         }
         .configurationDisplayName("Print Progress")
-        .description("Live 3D print progress. Configure NAS in the PrintHub app.")
+        .description("Live 3D print progress. Hold → Edit Widget to enter NAS URL & API Key.")
         .supportedFamilies([.systemSmall, .systemMedium])
     }
 }
