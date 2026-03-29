@@ -29,6 +29,10 @@
 	<key>NSUserNotificationUsageDescription</key>
 	<string>Notifications are used to alert you when filament stock is running low.</string>
 
+	<!-- Local network permission (required for iOS 14+ to connect to NAS on LAN) -->
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Filament Inventory connects to your NAS on the local network to sync your filament inventory and show live printer status.</string>
+
 	<!-- Network access for fetching filament info and NAS sync -->
 	<key>NSAppTransportSecurity</key>
 	<dict>

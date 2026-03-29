@@ -23,7 +23,7 @@ struct DashboardCustomizeSheet: View {
 
                                 Toggle("", isOn: $config.isVisible)
                                     .labelsHidden()
-                                    .onChange(of: config.isVisible) { _ in layout.save() }
+                                    .onChange(of: config.isVisible) { _, _ in layout.save() }
                             }
                         }
                     }

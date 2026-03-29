@@ -37,7 +37,7 @@ struct ContentView: View {
                         .tabItem { Label("Settings", systemImage: "gearshape.fill") }
                         .tag(4)
                 }
-                .accentColor(.orange)
+                .tint(.orange)
             }
         }
     }

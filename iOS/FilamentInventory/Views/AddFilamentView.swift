@@ -123,7 +123,7 @@ struct AddFilamentView: View {
                                     focusedField = colorName.isEmpty ? .colorName : nil
                                 }
                             }
-                            .onChange(of: sku) { newSKU in
+                            .onChange(of: sku) { _, newSKU in
                                 if newSKU.count >= 4,
                                    let match = findExistingFilament(barcode: nil, sku: newSKU) {
                                     activeSheet = .restock(match)
@@ -176,8 +176,8 @@ struct AddFilamentView: View {
                                 .fontWeight(.semibold)
                         }
                         Slider(value: $totalWeight, in: 100...5000, step: 50)
-                            .accentColor(.orange)
-                            .onChange(of: totalWeight) { newVal in
+                            .tint(.orange)
+                            .onChange(of: totalWeight) { _, newVal in
                                 if remainingWeight > newVal { remainingWeight = newVal }
                             }
                     }
@@ -189,7 +189,7 @@ struct AddFilamentView: View {
                                 .fontWeight(.semibold)
                         }
                         Slider(value: $remainingWeight, in: 0...totalWeight, step: 10)
-                            .accentColor(.blue)
+                            .tint(.blue)
                     }
                 } header: {
                     Text("Weight")

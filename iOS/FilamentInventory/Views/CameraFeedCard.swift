@@ -168,7 +168,7 @@ struct CameraFeedCard: View {
             Task { await refreshLightState() }
         }
         .onDisappear { streamer.stop() }
-        .onChange(of: nasService.isConnected) { connected in
+        .onChange(of: nasService.isConnected) { _, connected in
             if connected && !streamer.isStreaming {
                 streamer.start(baseURL: nasService.baseURL, apiKey: nasService.apiKey)
             }
