@@ -14,7 +14,7 @@ struct InventoryListView: View {
     }
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Group {
                 if store.filaments.isEmpty && !store.isLoading {
                     EmptyInventoryView()
@@ -65,7 +65,7 @@ struct FilterChipsView: View {
                     .padding(.vertical, 6)
                     .background(Color.red.opacity(0.1))
                     .foregroundColor(.red)
-                    .cornerRadius(20)
+                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                 }
 
                 ForEach(StockStatus.allCases, id: \.self) { status in
@@ -116,7 +116,7 @@ struct FilterChip: View {
             .padding(.vertical, 6)
             .background(isSelected ? color.opacity(0.2) : Color(.secondarySystemBackground))
             .foregroundColor(isSelected ? color : .secondary)
-            .cornerRadius(20)
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 20)
                     .stroke(isSelected ? color : Color.clear, lineWidth: 1.5)

@@ -133,7 +133,7 @@ struct HeroColorCard: View {
                     .padding(.horizontal, 10)
                     .padding(.vertical, 4)
                     .background(.ultraThinMaterial)
-                    .cornerRadius(8)
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
 
                 Text(filament.type.rawValue)
                     .font(.largeTitle)
@@ -154,7 +154,7 @@ struct HeroColorCard: View {
                 .padding(.horizontal, 10)
                 .padding(.vertical, 4)
                 .background(.ultraThinMaterial)
-                .cornerRadius(8)
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             }
             .padding()
         }

@@ -151,7 +151,7 @@ struct ShoppingItemRow: View {
                         .padding(.horizontal, 6).padding(.vertical, 2)
                         .background(Color.orange.opacity(0.15))
                         .foregroundColor(.orange)
-                        .cornerRadius(6)
+                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                 }
                 Text(filament.color.name)
                     .font(.caption).foregroundColor(.secondary)

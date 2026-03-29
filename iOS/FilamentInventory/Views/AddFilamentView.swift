@@ -46,7 +46,7 @@ struct AddFilamentView: View {
     var canFetchImage: Bool { !brand.isEmpty && !colorName.isEmpty }
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Form {
                 // Barcode Section
                 Section {
@@ -123,7 +123,7 @@ struct AddFilamentView: View {
                                     focusedField = colorName.isEmpty ? .colorName : nil
                                 }
                             }
-                            .onChange(of: sku) { newSKU in
+                            .onChange(of: sku) { _, newSKU in
                                 if newSKU.count >= 4,
                                    let match = findExistingFilament(barcode: nil, sku: newSKU) {
                                     activeSheet = .restock(match)
@@ -176,8 +176,8 @@ struct AddFilamentView: View {
                                 .fontWeight(.semibold)
                         }
                         Slider(value: $totalWeight, in: 100...5000, step: 50)
-                            .accentColor(.orange)
-                            .onChange(of: totalWeight) { newVal in
+                            .tint(.orange)
+                            .onChange(of: totalWeight) { _, newVal in
                                 if remainingWeight > newVal { remainingWeight = newVal }
                             }
                     }
@@ -189,7 +189,7 @@ struct AddFilamentView: View {
                                 .fontWeight(.semibold)
                         }
                         Slider(value: $remainingWeight, in: 0...totalWeight, step: 10)
-                            .accentColor(.blue)
+                            .tint(.blue)
                     }
                 } header: {
                     Text("Weight")
@@ -218,7 +218,7 @@ struct AddFilamentView: View {
                                 .resizable()
                                 .scaledToFit()
                                 .frame(height: 120)
-                                .cornerRadius(10)
+                                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                             Spacer()
                         }
                         Button("Fetch Different Image") {
@@ -532,7 +532,7 @@ struct ColorWheelPickerSheet: View {
 
     // UIColorPickerViewController wrapper
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ColorPickerWrapperView(hexCode: $hexCode, pickedColor: $pickedColor)
                 .navigationTitle("Choose Colour")
                 .navigationBarTitleDisplayMode(.inline)

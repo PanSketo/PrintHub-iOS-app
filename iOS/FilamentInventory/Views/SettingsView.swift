@@ -27,7 +27,7 @@ struct SettingsView: View {
     enum SettingsField { case nasURL, apiKey }
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Form {
                 // Tools — formerly standalone tabs
                 Section {
@@ -165,8 +165,8 @@ struct SettingsView: View {
                                 .foregroundColor(.orange)
                         }
                         Slider(value: $lowStockThreshold, in: 50...500, step: 25)
-                            .accentColor(.orange)
-                            .onChange(of: lowStockThreshold) { val in
+                            .tint(.orange)
+                            .onChange(of: lowStockThreshold) { _, val in
                                 store.lowStockThreshold = val
                                 UserDefaults.standard.set(val, forKey: "low_stock_threshold")
                             }
@@ -376,7 +376,7 @@ struct SettingsView: View {
                 Text("This will clear your NAS URL, API key, and all connection settings. Your inventory data on the NAS will not be affected.")
             }
             .sheet(isPresented: $showCharts) {
-                NavigationView {
+                NavigationStack {
                     ChartsView()
                         .environmentObject(store)
                         .navigationTitle("Statistics")
@@ -388,7 +388,7 @@ struct SettingsView: View {
                 }
             }
             .sheet(isPresented: $showShopping) {
-                NavigationView {
+                NavigationStack {
                     ShoppingListView()
                         .environmentObject(store)
                         .navigationTitle("Shopping List")
@@ -472,7 +472,7 @@ struct AddPrinterSheet: View {
     @State private var notes = ""
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Form {
                 Section {
                     HStack {
@@ -585,7 +585,7 @@ struct NASSetupView: View {
                     .padding()
                     .background(Color.orange)
                     .foregroundColor(.white)
-                    .cornerRadius(14)
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                     .fontWeight(.semibold)
                 }
                 .disabled(isTesting)
@@ -607,7 +607,7 @@ struct NASSetupView: View {
                     .padding()
                     .background(Color.green)
                     .foregroundColor(.white)
-                    .cornerRadius(14)
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                     .fontWeight(.semibold)
                 }
             }
@@ -673,7 +673,7 @@ struct ThemeOptionButton: View {
             .frame(maxWidth: .infinity)
             .padding(.vertical, 12)
             .background(isSelected ? Color.orange : Color(.tertiarySystemBackground))
-            .cornerRadius(12)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
                     .stroke(isSelected ? Color.orange : Color(.systemGray4), lineWidth: 1.5)

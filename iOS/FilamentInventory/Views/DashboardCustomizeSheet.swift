@@ -5,7 +5,7 @@ struct DashboardCustomizeSheet: View {
     @Environment(\.dismiss) var dismiss
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             List {
                 Section {
                     ForEach($layout.cards, id: \.id) { $config in
@@ -23,7 +23,7 @@ struct DashboardCustomizeSheet: View {
 
                                 Toggle("", isOn: $config.isVisible)
                                     .labelsHidden()
-                                    .onChange(of: config.isVisible) { _ in layout.save() }
+                                    .onChange(of: config.isVisible) { _, _ in layout.save() }
                             }
                         }
                     }

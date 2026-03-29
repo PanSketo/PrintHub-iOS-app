@@ -88,7 +88,7 @@ struct DashboardView: View {
     @State private var showCustomize = false
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ScrollView {
                 VStack(spacing: 20) {
                     ForEach(layout.visibleCards) { card in

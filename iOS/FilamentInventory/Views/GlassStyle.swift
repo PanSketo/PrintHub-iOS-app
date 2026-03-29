@@ -6,11 +6,13 @@ import SwiftUI
 // #available(iOS 26, *) is a runtime guard — the compiler still needs the
 // symbol in the SDK. We add a compile-time #if swift(>=6.2) so older Xcode
 // versions (CI on Xcode 16.x) silently fall through to the legacy style.
+//
+// Note: .cornerRadius() was deprecated in iOS 17 and removed in iOS 26.
+// All fallback paths use .clipShape(RoundedRectangle(...)) instead.
 
 extension View {
 
     /// Primary card surface.
-    /// Replaces `.background(Color(.secondarySystemBackground)).cornerRadius(r)`.
     @ViewBuilder
     func glassCard(cornerRadius: CGFloat = 16) -> some View {
 #if swift(>=6.2)
@@ -19,17 +21,16 @@ extension View {
         } else {
             self
                 .background(Color(.secondarySystemBackground))
-                .cornerRadius(cornerRadius)
+                .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
         }
 #else
         self
             .background(Color(.secondarySystemBackground))
-            .cornerRadius(cornerRadius)
+            .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
 #endif
     }
 
     /// Inner / nested card surface (slightly more recessed).
-    /// Replaces `.background(Color(.tertiarySystemBackground)).cornerRadius(r)`.
     @ViewBuilder
     func glassInnerCard(cornerRadius: CGFloat = 12) -> some View {
 #if swift(>=6.2)
@@ -38,12 +39,12 @@ extension View {
         } else {
             self
                 .background(Color(.tertiarySystemBackground))
-                .cornerRadius(cornerRadius)
+                .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
         }
 #else
         self
             .background(Color(.tertiarySystemBackground))
-            .cornerRadius(cornerRadius)
+            .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
 #endif
     }
 
@@ -56,12 +57,12 @@ extension View {
         } else {
             self
                 .background(fallback)
-                .cornerRadius(cornerRadius)
+                .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
         }
 #else
         self
             .background(fallback)
-            .cornerRadius(cornerRadius)
+            .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
 #endif
     }
 }
