@@ -42,20 +42,22 @@ jobs:
             clean archive
           test -d "$RUNNER_TEMP/FilamentInventory.xcarchive" && echo "✅ Archive created" || (echo "❌ Archive missing" && exit 1)
 
-      - name: Inject App Groups entitlements (ad-hoc codesign)
+      - name: Inject App Groups entitlements (ad-hoc codesign, inner → outer)
         run: |
           APP="$RUNNER_TEMP/FilamentInventory.xcarchive/Products/Applications/FilamentInventory.app"
           WIDGET="$APP/PlugIns/FilamentWidget.appex"
+
+          # Must sign inner bundle (widget) FIRST, then outer (app).
+          # Signing the outer app first then the widget invalidates the app signature.
+          echo "Injecting entitlements into widget..."
+          codesign --force --sign - \
+            --entitlements iOS/FilamentWidget/FilamentWidget.entitlements \
+            "$WIDGET"
 
           echo "Injecting entitlements into main app..."
           codesign --force --sign - \
             --entitlements iOS/FilamentInventory/FilamentInventory.entitlements \
             "$APP"
-
-          echo "Injecting entitlements into widget..."
-          codesign --force --sign - \
-            --entitlements iOS/FilamentWidget/FilamentWidget.entitlements \
-            "$WIDGET"
 
           echo "✅ Verifying entitlements..."
           codesign -d --entitlements - "$APP" 2>/dev/null | grep -q "application-groups" \

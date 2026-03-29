@@ -94,33 +94,6 @@ struct IntentFilamentProvider: AppIntentTimelineProvider {
     }
 }
 
-// MARK: - StaticTimelineProvider (iOS 16 fallback, reads from App Group)
-
-struct StaticFilamentProvider: TimelineProvider {
-    private let appGroup  = "group.com.pansketo.filamentinventory"
-    private let urlKey    = "nas_base_url"
-    private let keyKey    = "nas_api_key"
-
-    func placeholder(in context: Context) -> PrintEntry {
-        PrintEntry(date: Date(), status: "RUNNING", printName: "Benchy.3mf",
-                   progress: 42, remainingMinutes: 75, isConnected: true, isConfigured: true)
-    }
-
-    func getSnapshot(in context: Context, completion: @escaping (PrintEntry) -> Void) {
-        completion(placeholder(in: context))
-    }
-
-    func getTimeline(in context: Context, completion: @escaping (Timeline<PrintEntry>) -> Void) {
-        let defaults = UserDefaults(suiteName: appGroup)
-        let nasURL   = defaults?.string(forKey: urlKey) ?? ""
-        let apiKey   = defaults?.string(forKey: keyKey) ?? ""
-        Task {
-            let entry = await fetchPrinterEntry(nasURL: nasURL, apiKey: apiKey)
-            completion(Timeline(entries: [entry], policy: .after(nextRefresh(for: entry))))
-        }
-    }
-}
-
 // MARK: - Widget View
 
 struct FilamentWidgetView: View {
@@ -232,44 +205,19 @@ private struct WidgetBackgroundModifier: ViewModifier {
     }
 }
 
-// MARK: - Widget Definitions
+// MARK: - Widget + Entry Point
 
-@available(iOS 17.0, *)
-struct FilamentWidgetConfigurable: Widget {
+@main
+struct FilamentWidget: Widget {
     let kind = "FilamentWidget"
+
     var body: some WidgetConfiguration {
         AppIntentConfiguration(kind: kind, intent: FilamentWidgetIntent.self,
                                provider: IntentFilamentProvider()) { entry in
             FilamentWidgetView(entry: entry)
         }
         .configurationDisplayName("Print Progress")
-        .description("Live 3D print progress. Hold → Edit Widget to set NAS URL.")
+        .description("Live 3D print progress. Hold → Edit Widget to enter NAS URL.")
         .supportedFamilies([.systemSmall, .systemMedium])
-    }
-}
-
-struct FilamentWidgetStatic: Widget {
-    let kind = "FilamentWidgetStatic"
-    var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: StaticFilamentProvider()) { entry in
-            FilamentWidgetView(entry: entry)
-        }
-        .configurationDisplayName("Print Progress")
-        .description("Live 3D print progress from your Filament Inventory.")
-        .supportedFamilies([.systemSmall, .systemMedium])
-    }
-}
-
-// MARK: - Entry Point
-
-@main
-struct FilamentWidgets: WidgetBundle {
-    @WidgetBundleBuilder
-    var body: some Widget {
-        if #available(iOS 17.0, *) {
-            FilamentWidgetConfigurable()
-        } else {
-            FilamentWidgetStatic()
-        }
     }
 }
