@@ -15,6 +15,7 @@ struct SettingsView: View {
     @State private var showResetAlert = false
     @State private var showCharts = false
     @State private var showShopping = false
+    @State private var showCostCalculator = false
     @State private var showAddPrinter = false
     @State private var exportFileURL: URL?
     @State private var showShareSheet = false
@@ -46,6 +47,18 @@ struct SettingsView: View {
                     Button(action: { showShopping = true }) {
                         HStack {
                             Label("Shopping List", systemImage: "cart.fill")
+                                .foregroundColor(.primary)
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    Button(action: { showCostCalculator = true }) {
+                        HStack {
+                            Label("Print Cost Calculator", systemImage: "eurosign.circle.fill")
                                 .foregroundColor(.primary)
                             Spacer()
                             Image(systemName: "chevron.right")
@@ -400,6 +413,14 @@ struct SettingsView: View {
                             }
                         }
                 }
+            }
+            .sheet(isPresented: $showCostCalculator) {
+                PrintCostCalculatorView(filaments: store.filaments)
+                    .toolbar {
+                        ToolbarItem(placement: .navigationBarLeading) {
+                            Button("Done") { showCostCalculator = false }
+                        }
+                    }
             }
             .sheet(isPresented: $showAddPrinter) {
                 AddPrinterSheet(printerManager: printerManager)

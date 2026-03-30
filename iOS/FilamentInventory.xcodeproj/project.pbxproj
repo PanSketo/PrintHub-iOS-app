@@ -39,6 +39,12 @@
 		AB11CD22EF33450678AB1100 /* NASKeychainBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB11CD22EF33450678AB1101 /* NASKeychainBridge.swift */; };
 		FW0001AABB11CC22DD33EE04 /* FilamentWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = FW0001AABB11CC22DD33EE01 /* FilamentWidget.swift */; };
 		FW0001AABB11CC22DD33EE05 /* FilamentWidget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = FW0001AABB11CC22DD33EE02 /* FilamentWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		PC0001AABB11CC22DD330002 /* PrintCostCalculatorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = PC0001AABB11CC22DD330001 /* PrintCostCalculatorView.swift */; };
+		WA0001AABB11CC22DD330014 /* PrintHubWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = WA0001AABB11CC22DD330001 /* PrintHubWatchApp.swift */; };
+		WA0001AABB11CC22DD330015 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = WA0001AABB11CC22DD330002 /* ContentView.swift */; };
+		WA0001AABB11CC22DD330016 /* PrintHubWatchWidget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = WW0001AABB11CC22DD330003 /* PrintHubWatchWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		WA0001AABB11CC22DD330021 /* PrintHubWatch Watch App.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = WA0001AABB11CC22DD330004 /* PrintHubWatch Watch App.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		WW0001AABB11CC22DD330012 /* PrintHubWatchWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = WW0001AABB11CC22DD330001 /* PrintHubWatchWidget.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -77,6 +83,14 @@
 		FW0001AABB11CC22DD33EE01 /* FilamentWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilamentWidget.swift; sourceTree = "<group>"; };
 		FW0001AABB11CC22DD33EE02 /* FilamentWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = FilamentWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		FW0001AABB11CC22DD33EE03 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		PC0001AABB11CC22DD330001 /* PrintCostCalculatorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrintCostCalculatorView.swift; sourceTree = "<group>"; };
+		WA0001AABB11CC22DD330001 /* PrintHubWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrintHubWatchApp.swift; sourceTree = "<group>"; };
+		WA0001AABB11CC22DD330002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		WA0001AABB11CC22DD330003 /* Watch App Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		WA0001AABB11CC22DD330004 /* PrintHubWatch Watch App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "PrintHubWatch Watch App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		WW0001AABB11CC22DD330001 /* PrintHubWatchWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrintHubWatchWidget.swift; sourceTree = "<group>"; };
+		WW0001AABB11CC22DD330002 /* Watch Widget Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		WW0001AABB11CC22DD330003 /* PrintHubWatchWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = PrintHubWatchWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXContainerItemProxy section */
@@ -86,6 +100,20 @@
 			proxyType = 1;
 			remoteGlobalIDString = FW0001AABB11CC22DD33EE08;
 			remoteInfo = FilamentWidget;
+		};
+		WA0001AABB11CC22DD330017 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 98F54143AB4E86B28C3AFEE0 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = WW0001AABB11CC22DD330008;
+			remoteInfo = PrintHubWatchWidget;
+		};
+		WA0001AABB11CC22DD330019 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 98F54143AB4E86B28C3AFEE0 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = WA0001AABB11CC22DD330010;
+			remoteInfo = "PrintHubWatch Watch App";
 		};
 /* End PBXContainerItemProxy section */
 
@@ -99,6 +127,28 @@
 				FW0001AABB11CC22DD33EE05 /* FilamentWidget.appex in Embed App Extensions */,
 			);
 			name = "Embed App Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		WA0001AABB11CC22DD330009 /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				WA0001AABB11CC22DD330016 /* PrintHubWatchWidget.appex in Embed App Extensions */,
+			);
+			name = "Embed App Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		WA0001AABB11CC22DD330022 /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				WA0001AABB11CC22DD330021 /* PrintHubWatch Watch App.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXCopyFilesBuildPhase section */
@@ -118,6 +168,20 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		WA0001AABB11CC22DD330007 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		WW0001AABB11CC22DD330006 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -126,6 +190,8 @@
 			children = (
 				81B6A57DEDA76992CF92A034 /* FilamentInventory */,
 				FW0001AABB11CC22DD33EE06 /* FilamentWidget */,
+				WA0001AABB11CC22DD330005 /* PrintHubWatch Watch App */,
+				WW0001AABB11CC22DD330004 /* PrintHubWatchWidget */,
 				550258979F7021997C570D6F /* Products */,
 			);
 			sourceTree = "<group>";
@@ -144,6 +210,8 @@
 			children = (
 				5718BA8B2965F0F686C8E55B /* FilamentInventory.app */,
 				FW0001AABB11CC22DD33EE02 /* FilamentWidget.appex */,
+				WA0001AABB11CC22DD330004 /* PrintHubWatch Watch App.app */,
+				WW0001AABB11CC22DD330003 /* PrintHubWatchWidget.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -214,8 +282,28 @@
 				A9B8C7D6E5F4321098765432 /* CameraFeedCard.swift */,
 				8DCE6B7A50664C0BCE4B8321 /* DashboardCustomizeSheet.swift */,
 				CE73977386F1A781A97060C8 /* GlassStyle.swift */,
+				PC0001AABB11CC22DD330001 /* PrintCostCalculatorView.swift */,
 			);
 			path = Views;
+			sourceTree = "<group>";
+		};
+		WA0001AABB11CC22DD330005 /* PrintHubWatch Watch App */ = {
+			isa = PBXGroup;
+			children = (
+				WA0001AABB11CC22DD330001 /* PrintHubWatchApp.swift */,
+				WA0001AABB11CC22DD330002 /* ContentView.swift */,
+				WA0001AABB11CC22DD330003 /* Info.plist */,
+			);
+			path = "PrintHubWatch Watch App";
+			sourceTree = "<group>";
+		};
+		WW0001AABB11CC22DD330004 /* PrintHubWatchWidget */ = {
+			isa = PBXGroup;
+			children = (
+				WW0001AABB11CC22DD330001 /* PrintHubWatchWidget.swift */,
+				WW0001AABB11CC22DD330002 /* Info.plist */,
+			);
+			path = PrintHubWatchWidget;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -229,11 +317,13 @@
 				7B8633C7EB6F5CB13673C25D /* Frameworks */,
 				C52ABA055DA4D0050382EB56 /* Resources */,
 				FW0001AABB11CC22DD33EE07 /* Embed App Extensions */,
+				WA0001AABB11CC22DD330022 /* Embed Watch Content */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 				FW0001AABB11CC22DD33EE16 /* PBXTargetDependency */,
+				WA0001AABB11CC22DD330020 /* PBXTargetDependency */,
 			);
 			name = FilamentInventory;
 			productName = FilamentInventory;
@@ -255,6 +345,42 @@
 			name = FilamentWidget;
 			productName = FilamentWidget;
 			productReference = FW0001AABB11CC22DD33EE02 /* FilamentWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		WA0001AABB11CC22DD330010 /* PrintHubWatch Watch App */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = WA0001AABB11CC22DD330013 /* Build configuration list for PBXNativeTarget "PrintHubWatch Watch App" */;
+			buildPhases = (
+				WA0001AABB11CC22DD330006 /* Sources */,
+				WA0001AABB11CC22DD330007 /* Frameworks */,
+				WA0001AABB11CC22DD330008 /* Resources */,
+				WA0001AABB11CC22DD330009 /* Embed App Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				WA0001AABB11CC22DD330018 /* PBXTargetDependency */,
+			);
+			name = "PrintHubWatch Watch App";
+			productName = "PrintHubWatch Watch App";
+			productReference = WA0001AABB11CC22DD330004 /* PrintHubWatch Watch App.app */;
+			productType = "com.apple.product-type.application";
+		};
+		WW0001AABB11CC22DD330008 /* PrintHubWatchWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = WW0001AABB11CC22DD330011 /* Build configuration list for PBXNativeTarget "PrintHubWatchWidget" */;
+			buildPhases = (
+				WW0001AABB11CC22DD330005 /* Sources */,
+				WW0001AABB11CC22DD330006 /* Frameworks */,
+				WW0001AABB11CC22DD330007 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = PrintHubWatchWidget;
+			productName = PrintHubWatchWidget;
+			productReference = WW0001AABB11CC22DD330003 /* PrintHubWatchWidget.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
@@ -290,6 +416,8 @@
 			targets = (
 				0E8A3AD980EC179856012B7E /* FilamentInventory */,
 				FW0001AABB11CC22DD33EE08 /* FilamentWidget */,
+				WA0001AABB11CC22DD330010 /* PrintHubWatch Watch App */,
+				WW0001AABB11CC22DD330008 /* PrintHubWatchWidget */,
 			);
 		};
 /* End PBXProject section */
@@ -310,6 +438,20 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		WA0001AABB11CC22DD330008 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		WW0001AABB11CC22DD330007 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -317,6 +459,16 @@
 			isa = PBXTargetDependency;
 			target = FW0001AABB11CC22DD33EE08 /* FilamentWidget */;
 			targetProxy = FW0001AABB11CC22DD33EE15 /* PBXContainerItemProxy */;
+		};
+		WA0001AABB11CC22DD330018 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = WW0001AABB11CC22DD330008 /* PrintHubWatchWidget */;
+			targetProxy = WA0001AABB11CC22DD330017 /* PBXContainerItemProxy */;
+		};
+		WA0001AABB11CC22DD330020 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = WA0001AABB11CC22DD330010 /* PrintHubWatch Watch App */;
+			targetProxy = WA0001AABB11CC22DD330019 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -362,6 +514,24 @@
 				CC11DD22EE33FF44AA550022 /* CloudBackupService.swift in Sources */,
 				EE11FF22AA33BB44CC550033 /* FilamentIntents.swift in Sources */,
 				AB11CD22EF33450678AB1100 /* NASKeychainBridge.swift in Sources */,
+				PC0001AABB11CC22DD330002 /* PrintCostCalculatorView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		WA0001AABB11CC22DD330006 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				WA0001AABB11CC22DD330014 /* PrintHubWatchApp.swift in Sources */,
+				WA0001AABB11CC22DD330015 /* ContentView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		WW0001AABB11CC22DD330005 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				WW0001AABB11CC22DD330012 /* PrintHubWatchWidget.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -587,6 +757,98 @@
 			};
 			name = Release;
 		};
+		WA0001AABB11CC22DD330011 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Manual;
+				CODE_SIGNING_ALLOWED = NO;
+				CURRENT_PROJECT_VERSION = 85;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "PrintHubWatch Watch App/Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
+				MARKETING_VERSION = 2.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.pansketo.filamentinventory.watchkitapp";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 9.0;
+			};
+			name = Debug;
+		};
+		WA0001AABB11CC22DD330012 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Manual;
+				CODE_SIGNING_ALLOWED = NO;
+				CURRENT_PROJECT_VERSION = 85;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "PrintHubWatch Watch App/Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
+				MARKETING_VERSION = 2.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.pansketo.filamentinventory.watchkitapp";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 9.0;
+			};
+			name = Release;
+		};
+		WW0001AABB11CC22DD330009 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Manual;
+				CODE_SIGNING_ALLOWED = NO;
+				CURRENT_PROJECT_VERSION = 85;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = PrintHubWatchWidget/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 2.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.pansketo.filamentinventory.watchkitapp.watchwidget";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 9.0;
+			};
+			name = Debug;
+		};
+		WW0001AABB11CC22DD330010 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Manual;
+				CODE_SIGNING_ALLOWED = NO;
+				CURRENT_PROJECT_VERSION = 85;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = PrintHubWatchWidget/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 2.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.pansketo.filamentinventory.watchkitapp.watchwidget";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 9.0;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -613,6 +875,24 @@
 			buildConfigurations = (
 				FW0001AABB11CC22DD33EE09 /* Debug */,
 				FW0001AABB11CC22DD33EE10 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		WA0001AABB11CC22DD330013 /* Build configuration list for PBXNativeTarget "PrintHubWatch Watch App" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				WA0001AABB11CC22DD330011 /* Debug */,
+				WA0001AABB11CC22DD330012 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		WW0001AABB11CC22DD330011 /* Build configuration list for PBXNativeTarget "PrintHubWatchWidget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				WW0001AABB11CC22DD330009 /* Debug */,
+				WW0001AABB11CC22DD330010 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
