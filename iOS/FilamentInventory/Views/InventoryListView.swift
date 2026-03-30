@@ -13,6 +13,8 @@ struct InventoryListView: View {
         store.filteredFilaments(searchText: searchText, type: selectedType, status: selectedStatus)
     }
 
+    @State private var showAddFilament = false
+
     var body: some View {
         NavigationStack {
             Group {
@@ -36,11 +38,20 @@ struct InventoryListView: View {
             .navigationTitle("Inventory")
             .searchable(text: $searchText, prompt: "Search brand, color, type...")
             .toolbar {
-                ToolbarItemGroup(placement: .navigationBarTrailing) {
+                ToolbarItem(placement: .navigationBarLeading) {
                     Button(action: { viewMode = viewMode == .grid ? .list : .grid }) {
                         Image(systemName: viewMode == .grid ? "list.bullet" : "square.grid.2x2")
                     }
                 }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: { showAddFilament = true }) {
+                        Image(systemName: "plus")
+                    }
+                }
+            }
+            .sheet(isPresented: $showAddFilament) {
+                AddFilamentView()
+                    .environmentObject(store)
             }
         }
     }
@@ -409,7 +420,7 @@ struct EmptyInventoryView: View {
             Text("No Filaments Yet")
                 .font(.title2)
                 .fontWeight(.semibold)
-            Text("Tap the + tab to add your first filament spool")
+            Text("Tap the + button above to add your first filament spool")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)

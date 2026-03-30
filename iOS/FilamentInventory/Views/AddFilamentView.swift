@@ -123,7 +123,7 @@ struct AddFilamentView: View {
                                     focusedField = colorName.isEmpty ? .colorName : nil
                                 }
                             }
-                            .onChange(of: sku) { _, newSKU in
+                            .onChange(of: sku) { newSKU in
                                 if newSKU.count >= 4,
                                    let match = findExistingFilament(barcode: nil, sku: newSKU) {
                                     activeSheet = .restock(match)
@@ -177,7 +177,7 @@ struct AddFilamentView: View {
                         }
                         Slider(value: $totalWeight, in: 100...5000, step: 50)
                             .tint(.orange)
-                            .onChange(of: totalWeight) { _, newVal in
+                            .onChange(of: totalWeight) { newVal in
                                 if remainingWeight > newVal { remainingWeight = newVal }
                             }
                     }
