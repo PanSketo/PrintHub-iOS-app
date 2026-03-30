@@ -701,8 +701,8 @@ app.get('/api/printer/timelapse', async (req, res) => {
 });
 
 // ── Timelapse Stream ──────────────────────────────────────────────────────────
-// GET /api/printer/timelapse/stream?path=/sdcard/timelapse/foo.mp4
-// Proxies the FTP file over HTTP so the iOS VideoPlayer can stream it.
+// GET /api/printer/timelapse/stream?path=/timelapse/foo.mp4
+// Downloads the FTP file to a temp file, then serves it over HTTP.
 // Auth: X-API-Key header OR ?key= query param (needed for AVPlayer URLs).
 app.get('/api/printer/timelapse/stream', async (req, res) => {
   // Accept key as query param for AVPlayer compatibility
@@ -718,9 +718,12 @@ app.get('/api/printer/timelapse/stream', async (req, res) => {
     return res.status(503).json({ error: 'Printer not configured' });
   }
 
+  // Use a unique temp file to avoid collisions between concurrent requests
+  const tmpPath = path.join(THUMB_CACHE, `tl_${Date.now()}_${Math.random().toString(36).slice(2)}.mp4`);
   const client = new ftp.Client();
   client.ftp.verbose = false;
   try {
+    console.log(`[timelapse/stream] Connecting to ${PRINTER_IP}:990 for ${filePath}`);
     await client.access({
       host: PRINTER_IP,
       port: 990,
@@ -730,43 +733,30 @@ app.get('/api/printer/timelapse/stream', async (req, res) => {
       secureOptions: { rejectUnauthorized: false }
     });
 
-    // Get file size for Content-Length header
-    let fileSize = null;
-    try { fileSize = await client.size(filePath); } catch (_) {}
+    // Download full file to temp path first — more reliable than piping PassThrough
+    await client.downloadTo(tmpPath, filePath);
+    client.close();
+    console.log(`[timelapse/stream] FTP download complete: ${tmpPath}`);
+
+    const stat = fs.statSync(tmpPath);
+    const fileName = filePath.split('/').pop();
 
     res.setHeader('Content-Type', 'video/mp4');
+    res.setHeader('Content-Length', stat.size);
     res.setHeader('Accept-Ranges', 'none');
-    if (fileSize) res.setHeader('Content-Length', fileSize);
-
-    const fileName = filePath.split('/').pop();
-    // Don't force download — let iOS decide (inline for VideoPlayer, download via share sheet)
     res.setHeader('Content-Disposition', `inline; filename="${fileName}"`);
 
-    const pass = new PassThrough();
+    const readStream = fs.createReadStream(tmpPath);
+    readStream.pipe(res);
 
-    // Guarantee FTP client is closed on any outcome
-    const cleanup = () => { try { client.close(); } catch (_) {} };
+    // Clean up temp file after response finishes or client disconnects
+    const cleanup = () => fs.unlink(tmpPath, () => {});
+    res.on('finish', cleanup);
     res.on('close', cleanup);
-
-    // Propagate PassThrough errors to response so the connection doesn't hang
-    pass.on('error', (err) => {
-      console.error('[timelapse/stream] PassThrough error:', err.message);
-      cleanup();
-      if (!res.writableEnded) res.destroy();
-    });
-
-    pass.pipe(res);
-
-    try {
-      await client.downloadTo(pass, filePath);
-    } catch (downloadErr) {
-      console.error('[timelapse/stream] FTP download error:', downloadErr.message);
-      cleanup();
-      pass.destroy(downloadErr);
-    }
   } catch (err) {
     console.error('[timelapse/stream] Error:', err.message);
     try { client.close(); } catch (_) {}
+    try { fs.unlinkSync(tmpPath); } catch (_) {}
     if (!res.headersSent) res.status(500).json({ error: err.message });
   }
 });
