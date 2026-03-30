@@ -3,10 +3,18 @@ const Database = require('better-sqlite3');
 const path = require('path');
 const crypto = require('crypto');
 const fs = require('fs');
+const os = require('os');
 const https = require('https');
 const http = require('http');
 const { spawn } = require('child_process');
+const { PassThrough } = require('stream');
 const mqtt = require('mqtt');
+const ftp = require('basic-ftp');
+const AdmZip = require('adm-zip');
+
+// Thumbnail cache directory (persists across restarts, cleared on reboot)
+const THUMB_CACHE = path.join(os.tmpdir(), 'ph_thumbs');
+fs.mkdirSync(THUMB_CACHE, { recursive: true });
 
 const app = express();
 const PORT = process.env.PORT || 3456;
@@ -72,9 +80,10 @@ console.log('✅ Database tables ready');
 // Middleware
 app.use(express.json({ limit: '10mb' }));
 
-// Auth middleware
+// Auth middleware — accepts X-API-Key header OR ?key= query param
+// (?key= is required for AVPlayer and AsyncImage which cannot set custom headers)
 function authenticate(req, res, next) {
-  const key = req.headers['x-api-key'];
+  const key = req.headers['x-api-key'] || req.query.key;
   if (!key || key !== API_KEY) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
@@ -84,6 +93,57 @@ function authenticate(req, res, next) {
 // ── Public health (no auth — used by Docker healthcheck and uptime monitors) ──
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', version: '1.0.0', timestamp: new Date().toISOString() });
+});
+
+// ── Debug: walk FTP root and find timelapse folders — PUBLIC, no auth ─────────
+// GET /api/printer/ftp-tree  — lists root dirs and checks for timelapse inside each
+app.get('/api/printer/ftp-tree', async (req, res) => {
+  if (!PRINTER_IP || !PRINTER_ACCESS_CODE) {
+    return res.json({ error: 'Printer not configured' });
+  }
+  const client = new ftp.Client();
+  client.ftp.verbose = false;
+  const result = { root: [], timelapsePaths: [] };
+  try {
+    await client.access({
+      host: PRINTER_IP, port: 990, user: 'bblp',
+      password: PRINTER_ACCESS_CODE, secure: 'implicit',
+      secureOptions: { rejectUnauthorized: false }
+    });
+    const rootList = await client.list('/');
+    result.root = rootList.map(f => ({ name: f.name, isDir: f.isDirectory }));
+
+    for (const entry of rootList.filter(f => f.isDirectory && f.name !== '.' && f.name !== '..')) {
+      const subPath = `/${entry.name}`;
+      try {
+        const subList = await client.list(subPath);
+        const tl = subList.find(f => f.isDirectory && f.name.toLowerCase() === 'timelapse');
+        if (tl) result.timelapsePaths.push(`${subPath}/timelapse`);
+      } catch (_) {}
+
+      // Also check 2 levels deep
+      try {
+        const subList = await client.list(subPath);
+        for (const sub2 of subList.filter(f => f.isDirectory && f.name !== '.' && f.name !== '..')) {
+          try {
+            const deep = await client.list(`${subPath}/${sub2.name}`);
+            const tl2 = deep.find(f => f.isDirectory && f.name.toLowerCase() === 'timelapse');
+            if (tl2) result.timelapsePaths.push(`${subPath}/${sub2.name}/timelapse`);
+          } catch (_) {}
+        }
+      } catch (_) {}
+    }
+
+    // Also check root-level timelapse
+    const rootTl = rootList.find(f => f.isDirectory && f.name.toLowerCase() === 'timelapse');
+    if (rootTl) result.timelapsePaths.unshift('/timelapse');
+
+    res.json(result);
+  } catch (err) {
+    res.json({ error: err.message, result });
+  } finally {
+    client.close();
+  }
 });
 
 // ── Debug: dump printer_state table — PUBLIC, no auth needed
@@ -465,6 +525,317 @@ app.post('/api/printer/light', (req, res) => {
   client.on('error', (err) => { clearTimeout(timer); settle(err); });
 });
 
+// ── Printer File Browser ──────────────────────────────────────────────────────
+// GET /api/printer/files?path=/   — lists files on the printer's internal/USB storage
+// Connects to the printer via implicit FTPS (port 990, user bblp, pass ACCESS_CODE).
+// Directories are returned first, then files, both sorted alphabetically.
+app.get('/api/printer/files', async (req, res) => {
+  if (!PRINTER_IP || !PRINTER_ACCESS_CODE) {
+    return res.status(503).json({ error: 'Printer not configured (PRINTER_IP / PRINTER_ACCESS_CODE missing)' });
+  }
+  const dirPath = (req.query.path || '/').replace(/\/{2,}/g, '/');
+  const client = new ftp.Client();
+  client.ftp.verbose = false;
+  try {
+    await client.access({
+      host: PRINTER_IP,
+      port: 990,
+      user: 'bblp',
+      password: PRINTER_ACCESS_CODE,
+      secure: 'implicit',
+      secureOptions: { rejectUnauthorized: false }
+    });
+    const list = await client.list(dirPath);
+    const files = list
+      .filter(f => f.name !== '.' && f.name !== '..')
+      .map(f => {
+        const sep = dirPath.endsWith('/') ? '' : '/';
+        return {
+          name: f.name,
+          path: `${dirPath}${sep}${f.name}`,
+          isDirectory: f.isDirectory,
+          size: f.isDirectory ? null : (f.size || null),
+          modifiedDate: f.rawModifiedAt || null
+        };
+      })
+      .sort((a, b) => {
+        if (a.isDirectory !== b.isDirectory) return a.isDirectory ? -1 : 1;
+        return a.name.localeCompare(b.name);
+      });
+    res.json(files);
+  } catch (err) {
+    console.error('[files] FTP error:', err.message);
+    res.status(500).json({ error: err.message });
+  } finally {
+    client.close();
+  }
+});
+
+// ── Thumbnail ─────────────────────────────────────────────────────────────────
+// GET /api/printer/thumbnail?path=/sdcard/...file.3mf[&key=APIKEY]
+// Downloads the .3mf (ZIP) from the printer, extracts the first PNG thumbnail
+// found under Metadata/, caches it in /tmp/ph_thumbs/, and returns it as PNG.
+// Accepts ?key= query param for compatibility with AsyncImage (no custom headers).
+app.get('/api/printer/thumbnail', async (req, res) => {
+  // Auth: accept header OR ?key= query param
+  const keyParam = req.query.key;
+  if (keyParam && keyParam !== API_KEY) return res.status(401).json({ error: 'Unauthorized' });
+  if (!keyParam && req.headers['x-api-key'] !== API_KEY) return res.status(401).json({ error: 'Unauthorized' });
+
+  const filePath = req.query.path;
+  if (!filePath || !filePath.toLowerCase().includes('.3mf')) {
+    return res.status(400).json({ error: 'path must point to a .3mf file' });
+  }
+  if (!PRINTER_IP || !PRINTER_ACCESS_CODE) {
+    return res.status(503).json({ error: 'Printer not configured' });
+  }
+
+  // Cache key = base64 of path
+  const cacheKey = Buffer.from(filePath).toString('base64url').replace(/[^a-zA-Z0-9_-]/g, '_') + '.png';
+  const cachePath = path.join(THUMB_CACHE, cacheKey);
+
+  if (fs.existsSync(cachePath)) {
+    res.setHeader('Content-Type', 'image/png');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    return res.sendFile(cachePath);
+  }
+
+  const tempFile = path.join(os.tmpdir(), `ph_${Date.now()}_${Math.random().toString(36).slice(2)}.3mf`);
+  const client = new ftp.Client();
+  client.ftp.verbose = false;
+  try {
+    await client.access({
+      host: PRINTER_IP, port: 990, user: 'bblp',
+      password: PRINTER_ACCESS_CODE, secure: 'implicit',
+      secureOptions: { rejectUnauthorized: false }
+    });
+    await client.downloadTo(tempFile, filePath);
+    client.close();
+
+    const zip = new AdmZip(tempFile);
+    const entries = zip.getEntries();
+
+    // Find first PNG under Metadata/ (plate_1.png, thumbnail.png, etc.)
+    const thumb = entries.find(e => {
+      const n = e.entryName.toLowerCase();
+      return n.startsWith('metadata/') && n.endsWith('.png') && !e.isDirectory;
+    }) || entries.find(e => e.entryName.toLowerCase().endsWith('.png') && !e.isDirectory);
+
+    if (!thumb) {
+      try { fs.unlinkSync(tempFile); } catch {}
+      return res.status(404).json({ error: 'No thumbnail in this .3mf file' });
+    }
+
+    const imgData = zip.readFile(thumb);
+    fs.writeFileSync(cachePath, imgData);
+    try { fs.unlinkSync(tempFile); } catch {}
+
+    res.setHeader('Content-Type', 'image/png');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    res.send(imgData);
+  } catch (err) {
+    try { fs.unlinkSync(tempFile); } catch {}
+    client.close();
+    console.error('[thumbnail] Error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Timelapse List ────────────────────────────────────────────────────────────
+// GET /api/printer/timelapse  — searches known timelapse paths in order:
+//   /usb/timelapse  →  /sdcard/timelapse  →  /timelapse
+// Returns files from the first path that exists and contains .mp4 files.
+app.get('/api/printer/timelapse', async (req, res) => {
+  if (!PRINTER_IP || !PRINTER_ACCESS_CODE) {
+    return res.status(503).json({ error: 'Printer not configured' });
+  }
+  const client = new ftp.Client();
+  client.ftp.verbose = false;
+  try {
+    await client.access({
+      host: PRINTER_IP, port: 990, user: 'bblp',
+      password: PRINTER_ACCESS_CODE, secure: 'implicit',
+      secureOptions: { rejectUnauthorized: false }
+    });
+
+    // Build candidate paths dynamically from FTP root + known static paths
+    const staticPaths = ['/usb/timelapse', '/sdcard/timelapse', '/timelapse'];
+    const dynamicPaths = [];
+    try {
+      const root = await client.list('/');
+      for (const entry of root.filter(f => f.isDirectory && f.name !== '.' && f.name !== '..')) {
+        dynamicPaths.push(`/${entry.name}/timelapse`);
+      }
+    } catch (_) {}
+
+    const searchPaths = [...new Set([...staticPaths, ...dynamicPaths])];
+    console.log('[timelapse] Searching paths:', searchPaths);
+
+    for (const dir of searchPaths) {
+      try {
+        const list = await client.list(dir);
+        const files = list
+          .filter(f => f.name !== '.' && f.name !== '..' && f.name.toLowerCase().endsWith('.mp4'))
+          .map(f => ({
+            name: f.name,
+            path: `${dir}/${f.name}`,
+            size: f.size || null,
+            modifiedDate: f.rawModifiedAt || null
+          }))
+          .sort((a, b) => b.name.localeCompare(a.name));
+
+        console.log(`[timelapse] ✓ Found ${files.length} file(s) in ${dir}`);
+        if (files.length > 0) return res.json(files); // only stop if files found
+      } catch (dirErr) {
+        console.log(`[timelapse] ✗ ${dir}: ${dirErr.message}`);
+      }
+    }
+
+    console.warn('[timelapse] No timelapse folder found in any path');
+    res.json([]);
+  } catch (err) {
+    console.error('[timelapse] FTP connection error:', err.message);
+    res.status(500).json({ error: err.message });
+  } finally {
+    client.close();
+  }
+});
+
+// ── Timelapse Stream ──────────────────────────────────────────────────────────
+// GET /api/printer/timelapse/stream?path=/timelapse/foo.mp4
+// Downloads the FTP file to a temp file, then serves it over HTTP.
+// Auth: X-API-Key header OR ?key= query param (needed for AVPlayer URLs).
+app.get('/api/printer/timelapse/stream', async (req, res) => {
+  console.log(`[timelapse/stream] Request: path=${req.query.path} keyProvided=${!!req.query.key}`);
+
+  // Accept key as query param for AVPlayer compatibility
+  const keyParam = req.query.key;
+  if (keyParam && keyParam !== API_KEY) {
+    console.warn('[timelapse/stream] 401 key mismatch');
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  if (!keyParam && req.headers['x-api-key'] !== API_KEY) {
+    console.warn('[timelapse/stream] 401 no key');
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  const filePath = req.query.path;
+  if (!filePath || !filePath.endsWith('.mp4') || filePath.includes('..')) {
+    console.warn(`[timelapse/stream] 400 invalid path: ${filePath}`);
+    return res.status(400).json({ error: 'Invalid path — must be an .mp4 file path' });
+  }
+  if (!PRINTER_IP || !PRINTER_ACCESS_CODE) {
+    console.warn('[timelapse/stream] 503 printer not configured');
+    return res.status(503).json({ error: 'Printer not configured' });
+  }
+
+  // Use a unique temp file to avoid collisions between concurrent requests
+  const tmpPath = path.join(THUMB_CACHE, `tl_${Date.now()}_${Math.random().toString(36).slice(2)}.mp4`);
+  const client = new ftp.Client();
+  client.ftp.verbose = false;
+  try {
+    console.log(`[timelapse/stream] Connecting to ${PRINTER_IP}:990 for ${filePath}`);
+    await client.access({
+      host: PRINTER_IP,
+      port: 990,
+      user: 'bblp',
+      password: PRINTER_ACCESS_CODE,
+      secure: 'implicit',
+      secureOptions: { rejectUnauthorized: false }
+    });
+
+    // Download full file to temp path first — more reliable than piping PassThrough
+    await client.downloadTo(tmpPath, filePath);
+    client.close();
+    console.log(`[timelapse/stream] FTP download complete: ${tmpPath}`);
+
+    const fileName = filePath.split('/').pop();
+    res.setHeader('Content-Disposition', `inline; filename="${fileName}"`);
+
+    // sendFile handles Content-Type, Content-Length, Accept-Ranges, and Range (206)
+    // automatically — AVPlayer requires range request support to stream video
+    res.sendFile(tmpPath, { headers: { 'Content-Type': 'video/mp4' } }, (err) => {
+      fs.unlink(tmpPath, () => {});
+      if (err && !res.headersSent) res.status(500).json({ error: err.message });
+    });
+  } catch (err) {
+    console.error('[timelapse/stream] Error:', err.message);
+    try { client.close(); } catch (_) {}
+    try { fs.unlinkSync(tmpPath); } catch (_) {}
+    if (!res.headersSent) res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Start Print ───────────────────────────────────────────────────────────────
+// POST /api/printer/print   — body: { "file_path": "/sdcard/benchy.3mf" }
+// Sends a project_file print command to the printer via MQTT.
+// The FTP URL uses the double-slash convention Bambu expects: ftp://IP//sdcard/file.3mf
+app.post('/api/printer/print', (req, res) => {
+  const { file_path } = req.body || {};
+  if (!file_path) return res.status(400).json({ error: 'file_path is required' });
+  if (!PRINTER_IP || !PRINTER_ACCESS_CODE || !PRINTER_SERIAL) {
+    return res.status(503).json({ error: 'Printer not configured' });
+  }
+
+  const fileName    = file_path.split('/').filter(Boolean).pop() || file_path;
+  const subtaskName = fileName.replace(/\.(gcode\.3mf|3mf|gcode)$/i, '');
+  // Bambu FTP URL: ftp://IP//absolute/path (double slash = absolute)
+  const normalised  = file_path.startsWith('/') ? file_path.slice(1) : file_path;
+  const ftpUrl      = `ftp://${PRINTER_IP}//${normalised}`;
+
+  const mqttPayload = {
+    print: {
+      sequence_id:    String(Date.now()),
+      command:        'project_file',
+      param:          'Metadata/plate_1.gcode',
+      subtask_name:   subtaskName,
+      url:            ftpUrl,
+      bed_type:       'auto',
+      timelapse:      false,
+      bed_leveling:   true,
+      flow_cali:      false,
+      vibration_cali: true,
+      layer_inspect:  false,
+      use_ams:        false
+    }
+  };
+
+  console.log(`[printer] Starting print: ${fileName}  url=${ftpUrl}`);
+
+  const client = mqtt.connect(`mqtts://${PRINTER_IP}:8883`, {
+    username:        'bblp',
+    password:        PRINTER_ACCESS_CODE,
+    clientId:        `filament_print_${crypto.randomBytes(4).toString('hex')}`,
+    rejectUnauthorized: false,
+    connectTimeout:  10000,
+    reconnectPeriod: 0
+  });
+
+  let settled = false;
+  const settle = (err) => {
+    if (settled) return;
+    settled = true;
+    if (err) {
+      console.error('[printer] Print start error:', err.message);
+      try { client.end(true); } catch (_) {}
+      if (!res.headersSent) res.status(500).json({ error: err.message });
+    } else {
+      if (!res.headersSent) res.json({ ok: true });
+    }
+  };
+
+  const timer = setTimeout(() => settle(new Error('MQTT connection timed out')), 12000);
+
+  client.on('connect', () => {
+    clearTimeout(timer);
+    client.publish(`device/${PRINTER_SERIAL}/request`, JSON.stringify(mqttPayload), () => {
+      setTimeout(() => { try { client.end(); } catch (_) {} settle(null); }, 300);
+    });
+  });
+
+  client.on('error', (err) => { clearTimeout(timer); settle(err); });
+});
+
 // ── Printer Events ────────────────────────────────────────────────────────────
 // GET print lifecycle events (started / completed / failed) since a given timestamp.
 // iOS polls this to fire local notifications without needing APNs.
@@ -688,7 +1059,7 @@ app.get('/api/camera/stream', (req, res) => {
 
 // ── Start
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🧵 Filament Inventory Backend running on port ${PORT}`);
+  console.log(`🖨️  PrintHub Backend running on port ${PORT}`);
   console.log(`📁 Database: ${DB_PATH}`);
   console.log(`🔑 API Key configured: ${API_KEY !== 'change-this-to-a-strong-random-key' ? 'YES ✅' : 'NO ❌ (change it!)'}`);
 });

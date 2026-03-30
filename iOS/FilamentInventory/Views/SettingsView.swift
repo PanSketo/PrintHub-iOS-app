@@ -15,6 +15,7 @@ struct SettingsView: View {
     @State private var showResetAlert = false
     @State private var showCharts = false
     @State private var showShopping = false
+    @State private var showCostCalculator = false
     @State private var showAddPrinter = false
     @State private var exportFileURL: URL?
     @State private var showShareSheet = false
@@ -46,6 +47,18 @@ struct SettingsView: View {
                     Button(action: { showShopping = true }) {
                         HStack {
                             Label("Shopping List", systemImage: "cart.fill")
+                                .foregroundColor(.primary)
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    Button(action: { showCostCalculator = true }) {
+                        HStack {
+                            Label("Print Cost Calculator", systemImage: "eurosign.circle.fill")
                                 .foregroundColor(.primary)
                             Spacer()
                             Image(systemName: "chevron.right")
@@ -166,7 +179,7 @@ struct SettingsView: View {
                         }
                         Slider(value: $lowStockThreshold, in: 50...500, step: 25)
                             .tint(.orange)
-                            .onChange(of: lowStockThreshold) { _, val in
+                            .onChange(of: lowStockThreshold) { val in
                                 store.lowStockThreshold = val
                                 UserDefaults.standard.set(val, forKey: "low_stock_threshold")
                             }
@@ -228,12 +241,14 @@ struct SettingsView: View {
                     HStack {
                         Text("App Version")
                         Spacer()
-                        Text("2.0.0").foregroundColor(.secondary)
+                        Text(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—")
+                            .foregroundColor(.secondary)
                     }
                     HStack {
                         Text("Build")
                         Spacer()
-                        Text("1").foregroundColor(.secondary)
+                        Text(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "—")
+                            .foregroundColor(.secondary)
                     }
                     HStack {
                         Text("Bundle ID")
@@ -249,7 +264,7 @@ struct SettingsView: View {
                         Spacer()
                     }
                 } header: {
-                    Text("About Filament Inventory")
+                    Text("About PrintHub")
                 }
 
                 // Printers
@@ -399,6 +414,14 @@ struct SettingsView: View {
                         }
                 }
             }
+            .sheet(isPresented: $showCostCalculator) {
+                PrintCostCalculatorView(filaments: store.filaments)
+                    .toolbar {
+                        ToolbarItem(placement: .navigationBarLeading) {
+                            Button("Done") { showCostCalculator = false }
+                        }
+                    }
+            }
             .sheet(isPresented: $showAddPrinter) {
                 AddPrinterSheet(printerManager: printerManager)
             }
@@ -539,10 +562,10 @@ struct NASSetupView: View {
             Spacer()
 
             VStack(spacing: 12) {
-                Image(systemName: "cylinder.split.1x2.fill")
+                Image(systemName: "printer.fill")
                     .font(.system(size: 64))
                     .foregroundColor(.orange)
-                Text("Filament Inventory")
+                Text("PrintHub")
                     .font(.largeTitle)
                     .fontWeight(.black)
                 Text("Connect to your Synology NAS to get started")

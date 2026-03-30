@@ -43,7 +43,8 @@ struct PrinterView: View {
             // Segmented control at the top — cleaner than nested TabView
             Picker("Section", selection: $selectedSection) {
                 Text("Live Status").tag(0)
-                Text("Print Log").tag(1)
+                Text("Print Files").tag(1)
+                Text("Print Log").tag(2)
             }
             .pickerStyle(.segmented)
             .padding(.horizontal)
@@ -56,6 +57,8 @@ struct PrinterView: View {
             // Content
             if selectedSection == 0 {
                 PrinterStatusView(printerConfig: printerManager.activePrinter)
+            } else if selectedSection == 1 {
+                PrintFilesView(printerConfig: printerManager.activePrinter)
             } else {
                 PrintLogView()
             }
@@ -76,6 +79,7 @@ struct PrinterStatusView: View {
     @State private var isLoading = true
     @State private var error: String? = nil
     @State private var pollingTimer: Timer? = nil
+    @State private var isFetching = false
 
     var body: some View {
         NavigationStack {
@@ -283,13 +287,17 @@ struct PrinterStatusView: View {
     }
 
     func fetchState() async {
+        // Prevent overlapping concurrent fetches from the timer + manual refresh
+        guard !isFetching else { return }
+        await MainActor.run { isFetching = true }
+        defer { Task { @MainActor in isFetching = false } }
+
         do {
             let state = try await nasService.fetchPrinterState(using: printerConfig)
             await MainActor.run {
                 self.error = nil
                 self.printerState = state
                 self.isLoading = false
-                self.error = nil
             }
         } catch {
             await MainActor.run {

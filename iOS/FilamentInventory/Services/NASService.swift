@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import Security
 
 class NASService: ObservableObject {
     static let shared = NASService()
@@ -23,6 +24,7 @@ class NASService: ObservableObject {
             defaults.set(newValue, forKey: baseURLKey)
             UserDefaults(suiteName: appGroupSuite)?.set(newValue, forKey: baseURLKey)
             isConfigured = !newValue.isEmpty
+            NASKeychainBridge.save(url: newValue, key: defaults.string(forKey: apiKeyKey) ?? "")
         }
     }
 
@@ -31,6 +33,7 @@ class NASService: ObservableObject {
         set {
             defaults.set(newValue, forKey: apiKeyKey)
             UserDefaults(suiteName: appGroupSuite)?.set(newValue, forKey: apiKeyKey)
+            NASKeychainBridge.save(url: defaults.string(forKey: baseURLKey) ?? "", key: newValue)
         }
     }
 
@@ -39,6 +42,17 @@ class NASService: ObservableObject {
         config.timeoutIntervalForRequest = 15
         self.session = URLSession(configuration: config)
         isConfigured = !defaults.string(forKey: baseURLKey).isNilOrEmpty
+
+        // Mirror current values to App Group + Keychain so widget can always read them.
+        let url = defaults.string(forKey: baseURLKey) ?? ""
+        let key = defaults.string(forKey: apiKeyKey) ?? ""
+        let suite = UserDefaults(suiteName: appGroupSuite)
+        if !url.isEmpty { suite?.set(url, forKey: baseURLKey) }
+        if !key.isEmpty { suite?.set(key, forKey: apiKeyKey) }
+        // Keychain is shared between app and widget extension by default team ID
+        if !url.isEmpty || !key.isEmpty {
+            NASKeychainBridge.save(url: url, key: key)
+        }
 
         // Auto-connect immediately on launch if already configured
         if isConfigured {
@@ -413,6 +427,153 @@ class NASService: ObservableObject {
             throw NASError.serverError
         }
     }
+
+    // MARK: - Printer File Browser
+
+    /// Lists files on the printer's internal / USB storage.
+    /// Backend connects to the printer via implicit FTPS (port 990).
+    func fetchPrinterFiles(path: String = "/", using config: PrinterConfig? = nil) async throws -> [PrinterFile] {
+        let base = config?.nasURL ?? baseURL
+        let key  = config?.apiKey ?? apiKey
+        var components = URLComponents(string: "\(base)/api/printer/files")
+        components?.queryItems = [URLQueryItem(name: "path", value: path)]
+        guard let url = components?.url else { throw NASError.invalidURL }
+        var request = URLRequest(url: url)
+        request.addValue(key, forHTTPHeaderField: "X-API-Key")
+        let (data, response) = try await session.data(for: request)
+        guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw NASError.serverError }
+        return try JSONDecoder().decode([PrinterFile].self, from: data)
+    }
+
+    /// Returns a URL for the .3mf thumbnail endpoint, with ?key= for AsyncImage compatibility.
+    func thumbnailURL(forFile filePath: String, using config: PrinterConfig? = nil) -> URL? {
+        let base = config?.nasURL ?? baseURL
+        let key  = config?.apiKey ?? apiKey
+        var comps = URLComponents(string: "\(base)/api/printer/thumbnail")
+        comps?.queryItems = [
+            URLQueryItem(name: "path", value: filePath),
+            URLQueryItem(name: "key",  value: key),
+        ]
+        return comps?.url
+    }
+
+    /// Sends a project_file print command to the printer via the backend.
+    func startPrint(filePath: String, using config: PrinterConfig? = nil) async throws {
+        let base = config?.nasURL ?? baseURL
+        let key  = config?.apiKey ?? apiKey
+        guard let url = URL(string: "\(base)/api/printer/print") else { throw NASError.invalidURL }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.addValue(key, forHTTPHeaderField: "X-API-Key")
+        request.httpBody = try JSONSerialization.data(withJSONObject: ["file_path": filePath])
+        request.timeoutInterval = 30
+        let (_, response) = try await session.data(for: request)
+        guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw NASError.serverError }
+    }
+
+    // MARK: - Timelapse
+
+    /// Lists .mp4 timelapse files stored on the printer's SD card.
+    func fetchTimelapses(using config: PrinterConfig? = nil) async throws -> [TimelapseFile] {
+        let base = config?.nasURL ?? baseURL
+        let key  = config?.apiKey ?? apiKey
+        guard let url = URL(string: "\(base)/api/printer/timelapse") else { throw NASError.invalidURL }
+        var request = URLRequest(url: url)
+        request.addValue(key, forHTTPHeaderField: "X-API-Key")
+        let (data, response) = try await session.data(for: request)
+        guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw NASError.serverError }
+        return try JSONDecoder().decode([TimelapseFile].self, from: data)
+    }
+
+    /// Returns an HTTP URL that streams the timelapse from the NAS backend proxy.
+    /// Uses ?key= query parameter so AVPlayer can fetch it without custom headers.
+    func timelapseStreamURL(path: String, using config: PrinterConfig? = nil) -> URL? {
+        let base = config?.nasURL ?? baseURL
+        let key  = config?.apiKey ?? apiKey
+        var components = URLComponents(string: "\(base)/api/printer/timelapse/stream")
+        components?.queryItems = [
+            URLQueryItem(name: "path", value: path),
+            URLQueryItem(name: "key",  value: key)
+        ]
+        return components?.url
+    }
+
+    /// Downloads a timelapse video to the temp directory and returns the local URL.
+    func downloadTimelapse(path: String, using config: PrinterConfig? = nil) async throws -> URL {
+        guard let streamURL = timelapseStreamURL(path: path, using: config) else {
+            throw NASError.invalidURL
+        }
+        let fileName = path.split(separator: "/").last.map(String.init) ?? "timelapse.mp4"
+        let tempURL  = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
+        let downloadSession = URLSession(configuration: {
+            let c = URLSessionConfiguration.default
+            c.timeoutIntervalForRequest  = 120
+            c.timeoutIntervalForResource = 300
+            return c
+        }())
+        let (localURL, response) = try await downloadSession.download(from: streamURL)
+        guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw NASError.serverError }
+        if FileManager.default.fileExists(atPath: tempURL.path) {
+            try? FileManager.default.removeItem(at: tempURL)
+        }
+        try FileManager.default.moveItem(at: localURL, to: tempURL)
+        return tempURL
+    }
+}
+
+// MARK: - Printer File Model
+
+struct PrinterFile: Codable, Identifiable {
+    let name: String
+    let path: String
+    let isDirectory: Bool
+    let size: Int?
+    let modifiedDate: String?
+
+    var id: String { path }
+
+    var displaySize: String? {
+        guard let s = size, !isDirectory else { return nil }
+        if s < 1_024             { return "\(s) B" }
+        if s < 1_048_576         { return "\(s / 1_024) KB" }
+        return String(format: "%.1f MB", Double(s) / 1_048_576)
+    }
+
+    var isPrintable: Bool {
+        let l = name.lowercased()
+        return l.hasSuffix(".3mf") || l.hasSuffix(".gcode") || l.hasSuffix(".gcode.3mf")
+    }
+
+    var friendlyName: String {
+        switch name.lowercased() {
+        case "sdcard": return "Internal Storage"
+        case "usb":    return "USB Drive"
+        default:       return name
+        }
+    }
+}
+
+// MARK: - Timelapse File Model
+
+struct TimelapseFile: Codable, Identifiable {
+    let name: String
+    let path: String
+    let size: Int?
+    let modifiedDate: String?
+
+    var id: String { path }
+
+    var displaySize: String? {
+        guard let s = size else { return nil }
+        if s < 1_048_576 { return "\(s / 1_024) KB" }
+        return String(format: "%.1f MB", Double(s) / 1_048_576)
+    }
+
+    /// Human-readable name: strips ".mp4" suffix.
+    var displayName: String {
+        name.hasSuffix(".mp4") ? String(name.dropLast(4)) : name
+    }
 }
 
 // MARK: - NAS Errors
@@ -435,5 +596,8 @@ enum NASError: LocalizedError {
 }
 
 extension Optional where Wrapped == String {
-    var isNilOrEmpty: Bool { self == nil || self!.isEmpty }
+    var isNilOrEmpty: Bool {
+        guard let value = self else { return true }
+        return value.isEmpty
+    }
 }

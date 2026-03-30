@@ -17,25 +17,20 @@ struct ContentView: View {
                         .tabItem { Label("Dashboard", systemImage: "square.grid.2x2.fill") }
                         .tag(0)
 
-                    // Tab 2: Inventory (includes search, filter, add)
+                    // Tab 2: Inventory (includes search, filter, add via + button)
                     InventoryListView()
                         .tabItem { Label("Inventory", systemImage: "shippingbox.fill") }
                         .tag(1)
 
-                    // Tab 3: Add filament (center prominent button)
-                    AddFilamentView()
-                        .tabItem { Label("Add", systemImage: "plus.circle.fill") }
-                        .tag(2)
-
-                    // Tab 4: Printer (live status + print log + AMS mapping)
+                    // Tab 3: Printer (live status + print files + print log + AMS mapping)
                     PrinterView()
                         .tabItem { Label("Printer", systemImage: "printer.fill") }
-                        .tag(3)
+                        .tag(2)
 
-                    // Tab 5: Settings (includes Stats, Shopping List, theme, NAS config)
+                    // Tab 4: Settings (includes Stats, Shopping List, theme, NAS config)
                     SettingsView()
                         .tabItem { Label("Settings", systemImage: "gearshape.fill") }
-                        .tag(4)
+                        .tag(3)
                 }
                 .tint(.orange)
             }

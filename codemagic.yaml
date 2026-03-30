@@ -1,19 +1,14 @@
 workflows:
   ios-release:
-    name: Filament Inventory - Build IPA
+    name: PrintHub - Build IPA
     max_build_duration: 60
     instance_type: mac_mini_m1
 
     environment:
-      ios_signing:
-        distribution_type: ad_hoc          # Use ad_hoc for Signulous sideloading
-        bundle_identifier: com.pansketo.filamentinventory
       vars:
         XCODE_PROJECT: "iOS/FilamentInventory.xcodeproj"
         XCODE_SCHEME: "FilamentInventory"
-        BUNDLE_ID: "com.pansketo.filamentinventory"
       xcode: latest
-      cocoapods: default
 
     triggering:
       events:
@@ -23,79 +18,45 @@ workflows:
           include: true
 
     scripts:
-      - name: Set Xcode version
+      - name: Show Xcode version
         script: |
           xcode-select -p
           xcodebuild -version
 
-      - name: Install dependencies (none needed - pure SwiftUI)
+      - name: Stamp build number
         script: |
-          echo "No external dependencies required - pure SwiftUI + AVFoundation"
-
-      - name: Set bundle ID and version
-        script: |
-          cd iOS
-          # Update bundle identifier
-          /usr/libexec/PlistBuddy \
-            -c "Set :CFBundleIdentifier $BUNDLE_ID" \
-            FilamentInventory/Info.plist
-
-          # Set build number to CI build number
           /usr/libexec/PlistBuddy \
             -c "Set :CFBundleVersion $BUILD_NUMBER" \
-            FilamentInventory/Info.plist
-
-          echo "Bundle ID set to: $BUNDLE_ID"
+            iOS/FilamentInventory/Info.plist
           echo "Build number: $BUILD_NUMBER"
 
-      - name: Build unsigned IPA (for Signulous)
+      - name: Build archive (unsigned)
         script: |
-          cd iOS
-          # Build for any iOS device (no signing - Signulous will sign it)
           xcodebuild \
-            -project FilamentInventory.xcodeproj \
-            -scheme FilamentInventory \
+            -project $XCODE_PROJECT \
+            -scheme $XCODE_SCHEME \
             -configuration Release \
             -destination generic/platform=iOS \
-            -archivePath $CM_BUILD_DIR/FilamentInventory.xcarchive \
+            -archivePath $CM_BUILD_DIR/PrintHub.xcarchive \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
-            PRODUCT_BUNDLE_IDENTIFIER=$BUNDLE_ID \
-            archive | xcpretty
+            archive
 
-      - name: Export IPA from archive
+      - name: Package IPA
         script: |
-          # Create export options plist for unsigned build
-          cat > /tmp/ExportOptions.plist << 'PLIST'
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-            <key>method</key>
-            <string>ad-hoc</string>
-            <key>compileBitcode</key>
-            <false/>
-            <key>stripSwiftSymbols</key>
-            <true/>
-            <key>thinning</key>
-            <string>&lt;none&gt;</string>
-          </dict>
-          </plist>
-          PLIST
-
-          # Package app into IPA manually (works without signing)
-          cd $CM_BUILD_DIR/FilamentInventory.xcarchive/Products/Applications
+          APP_PATH=$(find $CM_BUILD_DIR/PrintHub.xcarchive/Products/Applications -name "*.app" | head -1)
+          echo "Found app: $APP_PATH"
           mkdir -p $CM_BUILD_DIR/Payload
-          cp -r FilamentInventory.app $CM_BUILD_DIR/Payload/
+          cp -r "$APP_PATH" $CM_BUILD_DIR/Payload/
           cd $CM_BUILD_DIR
-          zip -r FilamentInventory.ipa Payload/
-          echo "✅ IPA created: $CM_BUILD_DIR/FilamentInventory.ipa"
-          ls -lh FilamentInventory.ipa
+          zip -r PrintHub.ipa Payload/
+          echo "✅ IPA created:"
+          ls -lh PrintHub.ipa
 
     artifacts:
-      - $CM_BUILD_DIR/FilamentInventory.ipa
-      - $CM_BUILD_DIR/FilamentInventory.xcarchive
+      - $CM_BUILD_DIR/PrintHub.ipa
+      - $CM_BUILD_DIR/PrintHub.xcarchive
 
     publishing:
       email:

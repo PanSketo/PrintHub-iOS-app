@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Filament Inventory</string>
+	<string>PrintHub</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -31,7 +31,11 @@
 
 	<!-- Local network permission (required for iOS 14+ to connect to NAS on LAN) -->
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>Filament Inventory connects to your NAS on the local network to sync your filament inventory and show live printer status.</string>
+	<string>PrintHub connects to your NAS on the local network to sync your filament inventory and show live printer status.</string>
+
+	<!-- Photo library permission for saving timelapse videos -->
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>PrintHub saves timelapse videos from your printer to your photo library.</string>
 
 	<!-- Network access for fetching filament info and NAS sync -->
 	<key>NSAppTransportSecurity</key>
@@ -77,6 +81,6 @@
 	<key>NSHumanReadableCopyright</key>
 	<string>© 2025 Pantelis Tzelesis. All rights reserved.</string>
 	<key>CFBundleGetInfoString</key>
-	<string>Filament Inventory 1.0 © 2025 Pantelis Tzelesis</string>
+	<string>PrintHub 1.0 © 2025 Pantelis Tzelesis</string>
 </dict>
 </plist>
