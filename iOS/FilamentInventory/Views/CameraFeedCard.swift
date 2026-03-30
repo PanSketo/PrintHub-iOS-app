@@ -296,15 +296,15 @@ struct CameraFeedCard: View {
             Button { toggleLight() } label: {
                 ZStack {
                     if lightBusy {
-                        ProgressView().tint(lightOn ? .yellow : .white)
+                        ProgressView().tint(lightOn ? .yellow : .primary)
                     } else {
                         Image(systemName: lightOn ? "lightbulb.fill" : "lightbulb")
                             .font(.title3)
-                            .foregroundColor(lightOn ? .yellow : .white.opacity(lightKnown ? 0.6 : 0.25))
+                            .foregroundColor(lightOn ? .yellow : .primary)
                     }
                 }
                 .frame(width: 44, height: 44)
-                .background(lightOn ? Color.yellow.opacity(0.15) : Color.white.opacity(0.08))
+                .background(lightOn ? Color.yellow.opacity(0.20) : Color(.systemGray5))
                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
             }
             .disabled(lightBusy || !nasService.isConnected)
