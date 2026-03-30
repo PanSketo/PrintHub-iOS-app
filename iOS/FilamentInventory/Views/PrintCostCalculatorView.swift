@@ -91,6 +91,7 @@ struct PrintCostCalculatorView: View {
                 costSettingsSection
                 breakdownSection
             }
+            .scrollDismissesKeyboard(.interactively)
             .navigationTitle("Cost Calculator")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -100,6 +101,14 @@ struct PrintCostCalculatorView: View {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: resetCalculation) {
                         Label("Reset", systemImage: "arrow.counterclockwise")
+                    }
+                }
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") {
+                        UIApplication.shared.sendAction(
+                            #selector(UIResponder.resignFirstResponder),
+                            to: nil, from: nil, for: nil)
                     }
                 }
             }
@@ -214,26 +223,21 @@ struct PrintCostCalculatorView: View {
 
     private var breakdownSection: some View {
         Section {
-            Group {
-                BreakdownRow(label: "Filament (incl. \(Int(failureRate))% waste)",
-                             value: filamentCost, color: .orange)
-                BreakdownRow(label: "Electricity",
-                             value: electricityCost, color: .yellow)
-                BreakdownRow(label: "Printer Wear",
-                             value: depreciation, color: .blue)
-                BreakdownRow(label: "Consumables",
-                             value: consumablesCost, color: .purple)
-            }
-
-            Divider().padding(.vertical, 2)
+            BreakdownRow(label: "Filament (incl. \(Int(failureRate))% waste)",
+                         value: filamentCost, color: .orange)
+            BreakdownRow(label: "Electricity",
+                         value: electricityCost, color: .yellow)
+            BreakdownRow(label: "Printer Wear",
+                         value: depreciation, color: .blue)
+            BreakdownRow(label: "Consumables",
+                         value: consumablesCost, color: .purple)
 
             BreakdownRow(label: "Total Cost", value: totalCost, color: .primary)
+                .padding(.top, 4)
             BreakdownRow(
                 label: "Profit (\(formattedPercent)% margin)",
                 value: profitAmount, color: .green
             )
-
-            Divider().padding(.vertical, 4)
 
             // Selling price — the number to quote the customer
             HStack {
