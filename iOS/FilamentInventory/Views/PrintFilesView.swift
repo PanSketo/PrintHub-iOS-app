@@ -1,8 +1,8 @@
 import SwiftUI
 
 // MARK: - Print Files View
-// Browses the Bambu printer's internal (/sdcard) and USB (/usb) storage
-// via the NAS backend's FTPS proxy, and can start a print with one tap.
+// Browses the Bambu printer's SD card via the NAS backend FTPS proxy.
+// Shows folders and .3mf files as tiles with embedded PNG thumbnails.
 
 struct PrintFilesView: View {
     @EnvironmentObject var nasService: NASService
@@ -10,15 +10,22 @@ struct PrintFilesView: View {
 
     @State private var files: [PrinterFile] = []
     @State private var navStack: [(name: String, path: String)] = [("Print Files", "/")]
-    @State private var isLoading = false
-    @State private var error: String? = nil
-    @State private var confirmFile: PrinterFile? = nil
-    @State private var printingPath: String? = nil
+    @State private var isLoading  = false
+    @State private var error: String?
+    @State private var confirmFile: PrinterFile?
+    @State private var printingPath: String?
     @State private var toast = ""
 
-    var currentPath: String { navStack.last?.path ?? "/" }
+    var currentPath:  String { navStack.last?.path ?? "/" }
     var currentTitle: String { navStack.last?.name ?? "Print Files" }
-    var isAtRoot: Bool { navStack.count == 1 }
+    var isAtRoot:     Bool   { navStack.count == 1 }
+
+    // Show only folders and .3mf / .gcode.3mf — hide raw gcode & misc files
+    var visibleFiles: [PrinterFile] {
+        files.filter { $0.isDirectory || $0.name.lowercased().contains(".3mf") }
+    }
+
+    let columns = [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
 
     var body: some View {
         NavigationStack {
@@ -27,10 +34,10 @@ struct PrintFilesView: View {
                     loadingView
                 } else if let err = error {
                     errorView(err)
-                } else if files.isEmpty && !isLoading {
+                } else if visibleFiles.isEmpty && !isLoading {
                     emptyView
                 } else {
-                    fileList
+                    tileGrid
                 }
             }
             .navigationTitle(currentTitle)
@@ -52,30 +59,25 @@ struct PrintFilesView: View {
                     if isLoading {
                         ProgressView().scaleEffect(0.8)
                     } else {
-                        Button(action: load) {
-                            Image(systemName: "arrow.clockwise")
-                        }
+                        Button(action: load) { Image(systemName: "arrow.clockwise") }
                     }
                 }
             }
             .onAppear(perform: load)
             .confirmationDialog(
                 "Start Print?",
-                isPresented: Binding(
-                    get: { confirmFile != nil },
-                    set: { if !$0 { confirmFile = nil } }
-                ),
+                isPresented: Binding(get: { confirmFile != nil }, set: { if !$0 { confirmFile = nil } }),
                 titleVisibility: .visible
             ) {
                 if let file = confirmFile {
-                    Button("Print \"\(file.name)\"") {
+                    Button("Print \"\(file.friendlyName)\"") {
                         Task { await sendPrint(file) }
                     }
                     Button("Cancel", role: .cancel) { confirmFile = nil }
                 }
             } message: {
                 if let file = confirmFile {
-                    Text(file.displaySize.map { "\(file.name)  ·  \($0)" } ?? file.name)
+                    Text(file.displaySize.map { "\(file.friendlyName)  ·  \($0)" } ?? file.friendlyName)
                 }
             }
             .overlay(alignment: .bottom) {
@@ -93,7 +95,34 @@ struct PrintFilesView: View {
         }
     }
 
-    // MARK: - Sub-views
+    // MARK: - Tile grid
+
+    var tileGrid: some View {
+        ScrollView {
+            LazyVGrid(columns: columns, spacing: 12) {
+                ForEach(visibleFiles) { file in
+                    PrintFileTile(
+                        file: file,
+                        thumbnailURL: file.isDirectory ? nil : nasService.thumbnailURL(forFile: file.path, using: printerConfig),
+                        isPrinting: printingPath == file.path
+                    ) {
+                        if file.isDirectory {
+                            navStack.append((file.friendlyName, file.path))
+                            load()
+                        } else {
+                            confirmFile = file
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 12)
+            .padding(.bottom, 24)
+        }
+        .refreshable { load() }
+    }
+
+    // MARK: - State views
 
     var loadingView: some View {
         VStack(spacing: 12) {
@@ -109,8 +138,7 @@ struct PrintFilesView: View {
                 .font(.largeTitle).foregroundColor(.orange)
             Text(message)
                 .font(.subheadline).foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal)
+                .multilineTextAlignment(.center).padding(.horizontal)
             Button("Retry", action: load).foregroundColor(.orange)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -119,29 +147,9 @@ struct PrintFilesView: View {
     var emptyView: some View {
         VStack(spacing: 10) {
             Image(systemName: "folder").font(.largeTitle).foregroundColor(.secondary)
-            Text("No files found").foregroundColor(.secondary)
+            Text("No .3mf files found").foregroundColor(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    var fileList: some View {
-        List {
-            ForEach(files) { file in
-                PrintFileRow(
-                    file: file,
-                    isPrintingThis: printingPath == file.path
-                ) {
-                    if file.isDirectory {
-                        navStack.append((file.friendlyName, file.path))
-                        load()
-                    } else if file.isPrintable {
-                        confirmFile = file
-                    }
-                }
-            }
-        }
-        .listStyle(.insetGrouped)
-        .refreshable { load() }
     }
 
     // MARK: - Actions
@@ -157,17 +165,10 @@ struct PrintFilesView: View {
         error = nil
         Task {
             do {
-                let result = try await nasService.fetchPrinterFiles(
-                    path: currentPath, using: printerConfig)
-                await MainActor.run {
-                    files = result
-                    isLoading = false
-                }
+                let result = try await nasService.fetchPrinterFiles(path: currentPath, using: printerConfig)
+                await MainActor.run { files = result; isLoading = false }
             } catch {
-                await MainActor.run {
-                    self.error = error.localizedDescription
-                    isLoading = false
-                }
+                await MainActor.run { self.error = error.localizedDescription; isLoading = false }
             }
         }
     }
@@ -184,64 +185,89 @@ struct PrintFilesView: View {
         printingPath = nil
     }
 
-    @MainActor
-    func showToast(_ message: String) async {
+    @MainActor func showToast(_ message: String) async {
         withAnimation { toast = message }
         try? await Task.sleep(nanoseconds: 3_000_000_000)
         withAnimation { toast = "" }
     }
 }
 
-// MARK: - File Row
+// MARK: - Tile
 
-struct PrintFileRow: View {
+struct PrintFileTile: View {
     let file: PrinterFile
-    let isPrintingThis: Bool
+    let thumbnailURL: URL?
+    let isPrinting: Bool
     let onTap: () -> Void
 
     var body: some View {
         Button(action: onTap) {
-            HStack(spacing: 14) {
-                Image(systemName: file.isDirectory ? "folder.fill" : fileIcon)
-                    .font(.title3)
-                    .foregroundColor(file.isDirectory ? .orange : .blue)
-                    .frame(width: 28)
+            VStack(spacing: 0) {
+                // ── Thumbnail / preview area ──────────────────────────────
+                ZStack {
+                    Color(.systemGray6)
 
+                    if file.isDirectory {
+                        Image(systemName: "folder.fill")
+                            .font(.system(size: 44))
+                            .foregroundColor(.orange)
+                    } else if let url = thumbnailURL {
+                        AsyncImage(url: url) { phase in
+                            switch phase {
+                            case .success(let image):
+                                image.resizable().scaledToFill()
+                            case .failure:
+                                fallbackIcon
+                            default:
+                                ProgressView()
+                            }
+                        }
+                        .clipped()
+                    } else {
+                        fallbackIcon
+                    }
+
+                    // Printing spinner overlay
+                    if isPrinting {
+                        Color.black.opacity(0.45)
+                        ProgressView().tint(.white).scaleEffect(1.3)
+                    }
+                }
+                .frame(height: 130)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+                // ── Metadata strip ────────────────────────────────────────
                 VStack(alignment: .leading, spacing: 3) {
                     Text(file.friendlyName)
-                        .font(.subheadline)
+                        .font(.caption.weight(.semibold))
                         .foregroundColor(.primary)
                         .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+
                     if let size = file.displaySize {
                         Text(size)
-                            .font(.caption)
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    } else if file.isDirectory {
+                        Text("Folder")
+                            .font(.caption2)
                             .foregroundColor(.secondary)
                     }
                 }
-
-                Spacer()
-
-                if file.isDirectory {
-                    Image(systemName: "chevron.right")
-                        .font(.caption).foregroundColor(.secondary)
-                } else if file.isPrintable {
-                    if isPrintingThis {
-                        ProgressView().scaleEffect(0.85)
-                    } else {
-                        Image(systemName: "play.circle.fill")
-                            .font(.title2).foregroundColor(.orange)
-                    }
-                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 6)
             }
-            .contentShape(Rectangle())
+            .background(Color(.secondarySystemGroupedBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .shadow(color: .black.opacity(0.08), radius: 4, x: 0, y: 2)
         }
         .buttonStyle(.plain)
     }
 
-    var fileIcon: String {
-        let n = file.name.lowercased()
-        if n.hasSuffix(".3mf") || n.hasSuffix(".gcode.3mf") { return "cube.fill" }
-        if n.hasSuffix(".gcode")                             { return "doc.text.fill" }
-        return "doc.fill"
+    var fallbackIcon: some View {
+        Image(systemName: "cube.fill")
+            .font(.system(size: 40))
+            .foregroundColor(.secondary.opacity(0.5))
     }
 }
