@@ -125,18 +125,22 @@ struct PrintCostCalculatorView: View {
 
     private var durationSection: some View {
         Section {
-            HStack(spacing: 16) {
-                Text("Hours")
-                    .frame(minWidth: 44, alignment: .leading)
-                Stepper(value: $hours, in: 0...48) {
-                    Text("\(hours)").monospacedDigit()
-                        .frame(minWidth: 24, alignment: .trailing)
+            Stepper(value: $hours, in: 0...48) {
+                HStack {
+                    Text("Hours")
+                    Spacer()
+                    Text("\(hours) h")
+                        .monospacedDigit()
+                        .foregroundColor(.secondary)
                 }
-                Divider()
-                Text("Min").frame(minWidth: 28, alignment: .leading)
-                Stepper(value: $minutes, in: 0...59) {
-                    Text(String(format: "%02d", minutes)).monospacedDigit()
-                        .frame(minWidth: 24, alignment: .trailing)
+            }
+            Stepper(value: $minutes, in: 0...59) {
+                HStack {
+                    Text("Minutes")
+                    Spacer()
+                    Text(String(format: "%02d", minutes) + " min")
+                        .monospacedDigit()
+                        .foregroundColor(.secondary)
                 }
             }
         } header: {
