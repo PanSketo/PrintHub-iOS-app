@@ -94,6 +94,57 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', version: '1.0.0', timestamp: new Date().toISOString() });
 });
 
+// ── Debug: walk FTP root and find timelapse folders — PUBLIC, no auth ─────────
+// GET /api/printer/ftp-tree  — lists root dirs and checks for timelapse inside each
+app.get('/api/printer/ftp-tree', async (req, res) => {
+  if (!PRINTER_IP || !PRINTER_ACCESS_CODE) {
+    return res.json({ error: 'Printer not configured' });
+  }
+  const client = new ftp.Client();
+  client.ftp.verbose = false;
+  const result = { root: [], timelapsePaths: [] };
+  try {
+    await client.access({
+      host: PRINTER_IP, port: 990, user: 'bblp',
+      password: PRINTER_ACCESS_CODE, secure: 'implicit',
+      secureOptions: { rejectUnauthorized: false }
+    });
+    const rootList = await client.list('/');
+    result.root = rootList.map(f => ({ name: f.name, isDir: f.isDirectory }));
+
+    for (const entry of rootList.filter(f => f.isDirectory && f.name !== '.' && f.name !== '..')) {
+      const subPath = `/${entry.name}`;
+      try {
+        const subList = await client.list(subPath);
+        const tl = subList.find(f => f.isDirectory && f.name.toLowerCase() === 'timelapse');
+        if (tl) result.timelapsePaths.push(`${subPath}/timelapse`);
+      } catch (_) {}
+
+      // Also check 2 levels deep
+      try {
+        const subList = await client.list(subPath);
+        for (const sub2 of subList.filter(f => f.isDirectory && f.name !== '.' && f.name !== '..')) {
+          try {
+            const deep = await client.list(`${subPath}/${sub2.name}`);
+            const tl2 = deep.find(f => f.isDirectory && f.name.toLowerCase() === 'timelapse');
+            if (tl2) result.timelapsePaths.push(`${subPath}/${sub2.name}/timelapse`);
+          } catch (_) {}
+        }
+      } catch (_) {}
+    }
+
+    // Also check root-level timelapse
+    const rootTl = rootList.find(f => f.isDirectory && f.name.toLowerCase() === 'timelapse');
+    if (rootTl) result.timelapsePaths.unshift('/timelapse');
+
+    res.json(result);
+  } catch (err) {
+    res.json({ error: err.message, result });
+  } finally {
+    client.close();
+  }
+});
+
 // ── Debug: dump printer_state table — PUBLIC, no auth needed
 app.get('/api/printer/debug', (req, res) => {
   try {
@@ -593,12 +644,6 @@ app.get('/api/printer/thumbnail', async (req, res) => {
 // GET /api/printer/timelapse  — searches known timelapse paths in order:
 //   /usb/timelapse  →  /sdcard/timelapse  →  /timelapse
 // Returns files from the first path that exists and contains .mp4 files.
-const TIMELAPSE_SEARCH_PATHS = [
-  '/usb/timelapse',
-  '/sdcard/timelapse',
-  '/timelapse',
-];
-
 app.get('/api/printer/timelapse', async (req, res) => {
   if (!PRINTER_IP || !PRINTER_ACCESS_CODE) {
     return res.status(503).json({ error: 'Printer not configured' });
@@ -607,15 +652,25 @@ app.get('/api/printer/timelapse', async (req, res) => {
   client.ftp.verbose = false;
   try {
     await client.access({
-      host: PRINTER_IP,
-      port: 990,
-      user: 'bblp',
-      password: PRINTER_ACCESS_CODE,
-      secure: 'implicit',
+      host: PRINTER_IP, port: 990, user: 'bblp',
+      password: PRINTER_ACCESS_CODE, secure: 'implicit',
       secureOptions: { rejectUnauthorized: false }
     });
 
-    for (const dir of TIMELAPSE_SEARCH_PATHS) {
+    // Build candidate paths dynamically from FTP root + known static paths
+    const staticPaths = ['/usb/timelapse', '/sdcard/timelapse', '/timelapse'];
+    const dynamicPaths = [];
+    try {
+      const root = await client.list('/');
+      for (const entry of root.filter(f => f.isDirectory && f.name !== '.' && f.name !== '..')) {
+        dynamicPaths.push(`/${entry.name}/timelapse`);
+      }
+    } catch (_) {}
+
+    const searchPaths = [...new Set([...staticPaths, ...dynamicPaths])];
+    console.log('[timelapse] Searching paths:', searchPaths);
+
+    for (const dir of searchPaths) {
       try {
         const list = await client.list(dir);
         const files = list
@@ -626,18 +681,16 @@ app.get('/api/printer/timelapse', async (req, res) => {
             size: f.size || null,
             modifiedDate: f.rawModifiedAt || null
           }))
-          .sort((a, b) => b.name.localeCompare(a.name)); // newest first
+          .sort((a, b) => b.name.localeCompare(a.name));
 
-        console.log(`[timelapse] Found ${files.length} file(s) in ${dir}`);
-        return res.json(files); // return from first accessible directory
+        console.log(`[timelapse] ✓ Found ${files.length} file(s) in ${dir}`);
+        return res.json(files);
       } catch (dirErr) {
-        console.log(`[timelapse] ${dir} not accessible: ${dirErr.message}`);
-        // try next path
+        console.log(`[timelapse] ✗ ${dir}: ${dirErr.message}`);
       }
     }
 
-    // No path found
-    console.warn('[timelapse] No timelapse folder found in any known location');
+    console.warn('[timelapse] No timelapse folder found in any path');
     res.json([]);
   } catch (err) {
     console.error('[timelapse] FTP connection error:', err.message);
