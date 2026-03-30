@@ -12,6 +12,7 @@ private struct FilamentSlot: Identifiable {
 // MARK: - Print Cost Calculator View
 struct PrintCostCalculatorView: View {
     let filaments: [Filament]
+    @Environment(\.dismiss) private var dismiss
 
     // MARK: Persistent settings — pre-filled with your actual business values
     @AppStorage("calc_electricity_rate")   private var electricityRate:    Double = 0.11   // €/kWh
@@ -93,6 +94,9 @@ struct PrintCostCalculatorView: View {
             .navigationTitle("Cost Calculator")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Done") { dismiss() }
+                }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: resetCalculation) {
                         Label("Reset", systemImage: "arrow.counterclockwise")

@@ -416,11 +416,6 @@ struct SettingsView: View {
             }
             .sheet(isPresented: $showCostCalculator) {
                 PrintCostCalculatorView(filaments: store.filaments)
-                    .toolbar {
-                        ToolbarItem(placement: .navigationBarLeading) {
-                            Button("Done") { showCostCalculator = false }
-                        }
-                    }
             }
             .sheet(isPresented: $showAddPrinter) {
                 AddPrinterSheet(printerManager: printerManager)
