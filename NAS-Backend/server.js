@@ -749,21 +749,15 @@ app.get('/api/printer/timelapse/stream', async (req, res) => {
     client.close();
     console.log(`[timelapse/stream] FTP download complete: ${tmpPath}`);
 
-    const stat = fs.statSync(tmpPath);
     const fileName = filePath.split('/').pop();
-
-    res.setHeader('Content-Type', 'video/mp4');
-    res.setHeader('Content-Length', stat.size);
-    res.setHeader('Accept-Ranges', 'none');
     res.setHeader('Content-Disposition', `inline; filename="${fileName}"`);
 
-    const readStream = fs.createReadStream(tmpPath);
-    readStream.pipe(res);
-
-    // Clean up temp file after response finishes or client disconnects
-    const cleanup = () => fs.unlink(tmpPath, () => {});
-    res.on('finish', cleanup);
-    res.on('close', cleanup);
+    // sendFile handles Content-Type, Content-Length, Accept-Ranges, and Range (206)
+    // automatically — AVPlayer requires range request support to stream video
+    res.sendFile(tmpPath, { headers: { 'Content-Type': 'video/mp4' } }, (err) => {
+      fs.unlink(tmpPath, () => {});
+      if (err && !res.headersSent) res.status(500).json({ error: err.message });
+    });
   } catch (err) {
     console.error('[timelapse/stream] Error:', err.message);
     try { client.close(); } catch (_) {}
