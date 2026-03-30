@@ -445,6 +445,18 @@ class NASService: ObservableObject {
         return try JSONDecoder().decode([PrinterFile].self, from: data)
     }
 
+    /// Returns a URL for the .3mf thumbnail endpoint, with ?key= for AsyncImage compatibility.
+    func thumbnailURL(forFile filePath: String, using config: PrinterConfig? = nil) -> URL? {
+        let base = config?.nasURL ?? baseURL
+        let key  = config?.apiKey ?? apiKey
+        var comps = URLComponents(string: "\(base)/api/printer/thumbnail")
+        comps?.queryItems = [
+            URLQueryItem(name: "path", value: filePath),
+            URLQueryItem(name: "key",  value: key),
+        ]
+        return comps?.url
+    }
+
     /// Sends a project_file print command to the printer via the backend.
     func startPrint(filePath: String, using config: PrinterConfig? = nil) async throws {
         let base = config?.nasURL ?? baseURL

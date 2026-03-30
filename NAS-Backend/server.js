@@ -3,12 +3,18 @@ const Database = require('better-sqlite3');
 const path = require('path');
 const crypto = require('crypto');
 const fs = require('fs');
+const os = require('os');
 const https = require('https');
 const http = require('http');
 const { spawn } = require('child_process');
 const { PassThrough } = require('stream');
 const mqtt = require('mqtt');
 const ftp = require('basic-ftp');
+const AdmZip = require('adm-zip');
+
+// Thumbnail cache directory (persists across restarts, cleared on reboot)
+const THUMB_CACHE = path.join(os.tmpdir(), 'ph_thumbs');
+fs.mkdirSync(THUMB_CACHE, { recursive: true });
 
 const app = express();
 const PORT = process.env.PORT || 3456;
@@ -510,6 +516,76 @@ app.get('/api/printer/files', async (req, res) => {
     res.status(500).json({ error: err.message });
   } finally {
     client.close();
+  }
+});
+
+// ── Thumbnail ─────────────────────────────────────────────────────────────────
+// GET /api/printer/thumbnail?path=/sdcard/...file.3mf[&key=APIKEY]
+// Downloads the .3mf (ZIP) from the printer, extracts the first PNG thumbnail
+// found under Metadata/, caches it in /tmp/ph_thumbs/, and returns it as PNG.
+// Accepts ?key= query param for compatibility with AsyncImage (no custom headers).
+app.get('/api/printer/thumbnail', async (req, res) => {
+  // Auth: accept header OR ?key= query param
+  const keyParam = req.query.key;
+  if (keyParam && keyParam !== API_KEY) return res.status(401).json({ error: 'Unauthorized' });
+  if (!keyParam && req.headers['x-api-key'] !== API_KEY) return res.status(401).json({ error: 'Unauthorized' });
+
+  const filePath = req.query.path;
+  if (!filePath || !filePath.toLowerCase().includes('.3mf')) {
+    return res.status(400).json({ error: 'path must point to a .3mf file' });
+  }
+  if (!PRINTER_IP || !PRINTER_ACCESS_CODE) {
+    return res.status(503).json({ error: 'Printer not configured' });
+  }
+
+  // Cache key = base64 of path
+  const cacheKey = Buffer.from(filePath).toString('base64url').replace(/[^a-zA-Z0-9_-]/g, '_') + '.png';
+  const cachePath = path.join(THUMB_CACHE, cacheKey);
+
+  if (fs.existsSync(cachePath)) {
+    res.setHeader('Content-Type', 'image/png');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    return res.sendFile(cachePath);
+  }
+
+  const tempFile = path.join(os.tmpdir(), `ph_${Date.now()}_${Math.random().toString(36).slice(2)}.3mf`);
+  const client = new ftp.Client();
+  client.ftp.verbose = false;
+  try {
+    await client.access({
+      host: PRINTER_IP, port: 990, user: 'bblp',
+      password: PRINTER_ACCESS_CODE, secure: 'implicit',
+      secureOptions: { rejectUnauthorized: false }
+    });
+    await client.downloadTo(tempFile, filePath);
+    client.close();
+
+    const zip = new AdmZip(tempFile);
+    const entries = zip.getEntries();
+
+    // Find first PNG under Metadata/ (plate_1.png, thumbnail.png, etc.)
+    const thumb = entries.find(e => {
+      const n = e.entryName.toLowerCase();
+      return n.startsWith('metadata/') && n.endsWith('.png') && !e.isDirectory;
+    }) || entries.find(e => e.entryName.toLowerCase().endsWith('.png') && !e.isDirectory);
+
+    if (!thumb) {
+      try { fs.unlinkSync(tempFile); } catch {}
+      return res.status(404).json({ error: 'No thumbnail in this .3mf file' });
+    }
+
+    const imgData = zip.readFile(thumb);
+    fs.writeFileSync(cachePath, imgData);
+    try { fs.unlinkSync(tempFile); } catch {}
+
+    res.setHeader('Content-Type', 'image/png');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    res.send(imgData);
+  } catch (err) {
+    try { fs.unlinkSync(tempFile); } catch {}
+    client.close();
+    console.error('[thumbnail] Error:', err.message);
+    res.status(500).json({ error: err.message });
   }
 });
 
