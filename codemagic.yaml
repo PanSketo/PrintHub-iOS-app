@@ -45,7 +45,7 @@ workflows:
 
       - name: Package IPA
         script: |
-          APP_PATH=$(find $CM_BUILD_DIR/PrintHub.xcarchive/Products/Applications -name "*.app" | head -1)
+          APP_PATH="$CM_BUILD_DIR/PrintHub.xcarchive/Products/Applications/FilamentInventory.app"
           echo "Found app: $APP_PATH"
           mkdir -p $CM_BUILD_DIR/Payload
           cp -r "$APP_PATH" $CM_BUILD_DIR/Payload/
