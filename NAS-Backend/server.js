@@ -590,7 +590,15 @@ app.get('/api/printer/thumbnail', async (req, res) => {
 });
 
 // ── Timelapse List ────────────────────────────────────────────────────────────
-// GET /api/printer/timelapse  — list .mp4 files from /usb/timelapse/
+// GET /api/printer/timelapse  — searches known timelapse paths in order:
+//   /usb/timelapse  →  /sdcard/timelapse  →  /timelapse
+// Returns files from the first path that exists and contains .mp4 files.
+const TIMELAPSE_SEARCH_PATHS = [
+  '/usb/timelapse',
+  '/sdcard/timelapse',
+  '/timelapse',
+];
+
 app.get('/api/printer/timelapse', async (req, res) => {
   if (!PRINTER_IP || !PRINTER_ACCESS_CODE) {
     return res.status(503).json({ error: 'Printer not configured' });
@@ -606,21 +614,33 @@ app.get('/api/printer/timelapse', async (req, res) => {
       secure: 'implicit',
       secureOptions: { rejectUnauthorized: false }
     });
-    const list = await client.list('/usb/timelapse');
-    const files = list
-      .filter(f => f.name !== '.' && f.name !== '..' && f.name.toLowerCase().endsWith('.mp4'))
-      .map(f => ({
-        name: f.name,
-        path: `/usb/timelapse/${f.name}`,
-        size: f.size || null,
-        modifiedDate: f.rawModifiedAt || null
-      }))
-      .sort((a, b) => b.name.localeCompare(a.name)); // newest first
-    res.json(files);
+
+    for (const dir of TIMELAPSE_SEARCH_PATHS) {
+      try {
+        const list = await client.list(dir);
+        const files = list
+          .filter(f => f.name !== '.' && f.name !== '..' && f.name.toLowerCase().endsWith('.mp4'))
+          .map(f => ({
+            name: f.name,
+            path: `${dir}/${f.name}`,
+            size: f.size || null,
+            modifiedDate: f.rawModifiedAt || null
+          }))
+          .sort((a, b) => b.name.localeCompare(a.name)); // newest first
+
+        console.log(`[timelapse] Found ${files.length} file(s) in ${dir}`);
+        return res.json(files); // return from first accessible directory
+      } catch (dirErr) {
+        console.log(`[timelapse] ${dir} not accessible: ${dirErr.message}`);
+        // try next path
+      }
+    }
+
+    // No path found
+    console.warn('[timelapse] No timelapse folder found in any known location');
+    res.json([]);
   } catch (err) {
-    console.error('[timelapse] FTP error:', err.message);
-    // Return empty list if folder doesn't exist yet (printer hasn't made a timelapse)
-    if (err.message && err.message.includes('550')) return res.json([]);
+    console.error('[timelapse] FTP connection error:', err.message);
     res.status(500).json({ error: err.message });
   } finally {
     client.close();
@@ -638,8 +658,8 @@ app.get('/api/printer/timelapse/stream', async (req, res) => {
   if (!keyParam && req.headers['x-api-key'] !== API_KEY) return res.status(401).json({ error: 'Unauthorized' });
 
   const filePath = req.query.path;
-  if (!filePath || !filePath.startsWith('/usb/timelapse/') || !filePath.endsWith('.mp4')) {
-    return res.status(400).json({ error: 'Invalid path' });
+  if (!filePath || !filePath.endsWith('.mp4') || filePath.includes('..')) {
+    return res.status(400).json({ error: 'Invalid path — must be an .mp4 file path' });
   }
   if (!PRINTER_IP || !PRINTER_ACCESS_CODE) {
     return res.status(503).json({ error: 'Printer not configured' });
