@@ -705,16 +705,26 @@ app.get('/api/printer/timelapse', async (req, res) => {
 // Downloads the FTP file to a temp file, then serves it over HTTP.
 // Auth: X-API-Key header OR ?key= query param (needed for AVPlayer URLs).
 app.get('/api/printer/timelapse/stream', async (req, res) => {
+  console.log(`[timelapse/stream] Request: path=${req.query.path} keyProvided=${!!req.query.key}`);
+
   // Accept key as query param for AVPlayer compatibility
   const keyParam = req.query.key;
-  if (keyParam && keyParam !== API_KEY) return res.status(401).json({ error: 'Unauthorized' });
-  if (!keyParam && req.headers['x-api-key'] !== API_KEY) return res.status(401).json({ error: 'Unauthorized' });
+  if (keyParam && keyParam !== API_KEY) {
+    console.warn('[timelapse/stream] 401 key mismatch');
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  if (!keyParam && req.headers['x-api-key'] !== API_KEY) {
+    console.warn('[timelapse/stream] 401 no key');
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
 
   const filePath = req.query.path;
   if (!filePath || !filePath.endsWith('.mp4') || filePath.includes('..')) {
+    console.warn(`[timelapse/stream] 400 invalid path: ${filePath}`);
     return res.status(400).json({ error: 'Invalid path — must be an .mp4 file path' });
   }
   if (!PRINTER_IP || !PRINTER_ACCESS_CODE) {
+    console.warn('[timelapse/stream] 503 printer not configured');
     return res.status(503).json({ error: 'Printer not configured' });
   }
 
