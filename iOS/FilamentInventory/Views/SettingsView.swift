@@ -228,12 +228,14 @@ struct SettingsView: View {
                     HStack {
                         Text("App Version")
                         Spacer()
-                        Text("2.0.0").foregroundColor(.secondary)
+                        Text(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—")
+                            .foregroundColor(.secondary)
                     }
                     HStack {
                         Text("Build")
                         Spacer()
-                        Text("1").foregroundColor(.secondary)
+                        Text(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "—")
+                            .foregroundColor(.secondary)
                     }
                     HStack {
                         Text("Bundle ID")
