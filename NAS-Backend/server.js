@@ -80,9 +80,10 @@ console.log('✅ Database tables ready');
 // Middleware
 app.use(express.json({ limit: '10mb' }));
 
-// Auth middleware
+// Auth middleware — accepts X-API-Key header OR ?key= query param
+// (?key= is required for AVPlayer and AsyncImage which cannot set custom headers)
 function authenticate(req, res, next) {
-  const key = req.headers['x-api-key'];
+  const key = req.headers['x-api-key'] || req.query.key;
   if (!key || key !== API_KEY) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
