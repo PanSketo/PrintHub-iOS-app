@@ -23,6 +23,13 @@ struct PrintCostCalculatorView: View {
     @AppStorage("calc_consumables_ph")     private var consumablesPH:      Double = 0.125  // €/h (€10/mo ÷ 80h/mo)
     @AppStorage("calc_profit_margin")      private var profitMargin:       Double = 18     // % (true margin)
 
+    // MARK: Monthly fixed overhead
+    @AppStorage("calc_monthly_hours")      private var monthlyHours:       Double = 80     // h/mo printing
+    @AppStorage("calc_rent")               private var rent:               Double = 400    // €/mo
+    @AppStorage("calc_internet")           private var internet:           Double = 50     // €/mo
+    @AppStorage("calc_accounting")         private var accounting:         Double = 50     // €/mo
+    @AppStorage("calc_misc")               private var misc:               Double = 0      // €/mo
+
     // MARK: Per-calculation state
     @State private var hours:   Int = 0
     @State private var minutes: Int = 0
@@ -36,6 +43,11 @@ struct PrintCostCalculatorView: View {
     @State private var failureRateText:      String = ""
     @State private var consumablesPHText:    String = ""
     @State private var profitMarginText:     String = ""
+    @State private var monthlyHoursText:     String = ""
+    @State private var rentText:             String = ""
+    @State private var internetText:         String = ""
+    @State private var accountingText:       String = ""
+    @State private var miscText:             String = ""
 
     // MARK: Computed costs
 
@@ -68,9 +80,15 @@ struct PrintCostCalculatorView: View {
         durationHours * consumablesPH
     }
 
+    private var fixedOverheadCost: Double {
+        guard monthlyHours > 0 else { return 0 }
+        let monthlyTotal = rent + internet + accounting + misc
+        return durationHours * (monthlyTotal / monthlyHours)
+    }
+
     /// All real costs combined
     private var totalCost: Double {
-        filamentCost + electricityCost + depreciation + consumablesCost
+        filamentCost + electricityCost + depreciation + consumablesCost + fixedOverheadCost
     }
 
     /// True profit margin: price = cost ÷ (1 − margin%)
@@ -89,6 +107,7 @@ struct PrintCostCalculatorView: View {
                 filamentSection
                 durationSection
                 costSettingsSection
+                monthlyOverheadSection
                 breakdownSection
             }
             .scrollDismissesKeyboard(.interactively)
@@ -219,6 +238,48 @@ struct PrintCostCalculatorView: View {
         }
     }
 
+    // MARK: - Monthly Overhead Section
+
+    private var monthlyOverheadSection: some View {
+        Section {
+            SettingRow(
+                label: "Rent", unit: "€/mo",
+                info: "Monthly rent or workspace cost.",
+                text: $rentText
+            ) { if let v = Double(rentText) { rent = max(0, v) } }
+
+            SettingRow(
+                label: "Internet", unit: "€/mo",
+                info: "Monthly internet/connectivity cost.",
+                text: $internetText
+            ) { if let v = Double(internetText) { internet = max(0, v) } }
+
+            SettingRow(
+                label: "Accounting", unit: "€/mo",
+                info: "Monthly accountant or bookkeeping cost.",
+                text: $accountingText
+            ) { if let v = Double(accountingText) { accounting = max(0, v) } }
+
+            SettingRow(
+                label: "Misc", unit: "€/mo",
+                info: "Any other monthly business expense.",
+                text: $miscText
+            ) { if let v = Double(miscText) { misc = max(0, v) } }
+
+            SettingRow(
+                label: "Monthly Print Hours", unit: "h/mo",
+                info: "How many hours per month the printer runs. Used to split fixed costs across prints.",
+                text: $monthlyHoursText
+            ) { if let v = Double(monthlyHoursText), v > 0 { monthlyHours = v } }
+        } header: {
+            Text("Monthly Overhead")
+        } footer: {
+            let total = rent + internet + accounting + misc
+            let perHour = monthlyHours > 0 ? total / monthlyHours : 0
+            Text("Total €\(String(format: "%.0f", total))/mo ÷ \(Int(monthlyHours)) h/mo = \(String(format: "%.2f", perHour)) €/h added to each print.")
+        }
+    }
+
     // MARK: - Breakdown Section
 
     private var breakdownSection: some View {
@@ -231,6 +292,8 @@ struct PrintCostCalculatorView: View {
                          value: depreciation, color: .blue)
             BreakdownRow(label: "Consumables",
                          value: consumablesCost, color: .purple)
+            BreakdownRow(label: "Fixed Overhead",
+                         value: fixedOverheadCost, color: .teal)
 
             BreakdownRow(label: "Total Cost", value: totalCost, color: .primary)
                 .padding(.top, 4)
@@ -291,6 +354,11 @@ struct PrintCostCalculatorView: View {
         failureRateText     = fmt(failureRate)
         consumablesPHText   = fmt(consumablesPH)
         profitMarginText    = fmt(profitMargin)
+        monthlyHoursText    = fmt(monthlyHours)
+        rentText            = fmt(rent)
+        internetText        = fmt(internet)
+        accountingText      = fmt(accounting)
+        miscText            = fmt(misc)
     }
 
     private func resetCalculation() {
