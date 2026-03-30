@@ -684,7 +684,7 @@ app.get('/api/printer/timelapse', async (req, res) => {
           .sort((a, b) => b.name.localeCompare(a.name));
 
         console.log(`[timelapse] ✓ Found ${files.length} file(s) in ${dir}`);
-        return res.json(files);
+        if (files.length > 0) return res.json(files); // only stop if files found
       } catch (dirErr) {
         console.log(`[timelapse] ✗ ${dir}: ${dirErr.message}`);
       }
