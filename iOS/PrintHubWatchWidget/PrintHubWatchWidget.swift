@@ -233,8 +233,12 @@ struct PrintHubWatchWidget: Widget {
 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: WatchProvider()) { entry in
-            WatchComplicationView(entry: entry)
-                .containerBackground(.fill.tertiary, for: .widget)
+            if #available(watchOS 10.0, *) {
+                WatchComplicationView(entry: entry)
+                    .containerBackground(.fill.tertiary, for: .widget)
+            } else {
+                WatchComplicationView(entry: entry)
+            }
         }
         .configurationDisplayName("Print Progress")
         .description("Live 3D print status on your wrist.")
