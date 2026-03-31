@@ -35,6 +35,7 @@
 		76799C555F79C18C47A7AE65 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3EC4EA09CED15A71400F27B6 /* Assets.xcassets */; };
 		AA11BB22CC33DD44EE55FF01 /* PrinterManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB11CC22DD33EE44FF550011 /* PrinterManager.swift */; };
 		CC11DD22EE33FF44AA550022 /* CloudBackupService.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD11EE22FF33AA44BB550022 /* CloudBackupService.swift */; };
+		NB0001AABB11CC22DD330001 /* NASBackupService.swift in Sources */ = {isa = PBXBuildFile; fileRef = NB0001AABB11CC22DD330002 /* NASBackupService.swift */; };
 		EE11FF22AA33BB44CC550033 /* FilamentIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF11AA22BB33CC44DD550033 /* FilamentIntents.swift */; };
 		AB11CD22EF33450678AB1100 /* NASKeychainBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB11CD22EF33450678AB1101 /* NASKeychainBridge.swift */; };
 		FW0001AABB11CC22DD33EE04 /* FilamentWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = FW0001AABB11CC22DD33EE01 /* FilamentWidget.swift */; };
@@ -77,6 +78,7 @@
 		3EC4EA09CED15A71400F27B6 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		BB11CC22DD33EE44FF550011 /* PrinterManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrinterManager.swift; sourceTree = "<group>"; };
 		DD11EE22FF33AA44BB550022 /* CloudBackupService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudBackupService.swift; sourceTree = "<group>"; };
+		NB0001AABB11CC22DD330002 /* NASBackupService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NASBackupService.swift; sourceTree = "<group>"; };
 		FF11AA22BB33CC44DD550033 /* FilamentIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilamentIntents.swift; sourceTree = "<group>"; };
 		AB11CD22EF33450678AB1101 /* NASKeychainBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NASKeychainBridge.swift; sourceTree = "<group>"; };
 		620567A71E5CA3AB8765C812 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -249,6 +251,7 @@
 				C3F34FAB5D6735F672A69CC3 /* NotificationManager.swift */,
 				BB11CC22DD33EE44FF550011 /* PrinterManager.swift */,
 				DD11EE22FF33AA44BB550022 /* CloudBackupService.swift */,
+				NB0001AABB11CC22DD330002 /* NASBackupService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -512,6 +515,7 @@
 				DBCAEEA75CD1232B9E0E69D5 /* GlassStyle.swift in Sources */,
 				AA11BB22CC33DD44EE55FF01 /* PrinterManager.swift in Sources */,
 				CC11DD22EE33FF44AA550022 /* CloudBackupService.swift in Sources */,
+				NB0001AABB11CC22DD330001 /* NASBackupService.swift in Sources */,
 				EE11FF22AA33BB44CC550033 /* FilamentIntents.swift in Sources */,
 				AB11CD22EF33450678AB1100 /* NASKeychainBridge.swift in Sources */,
 				PC0001AABB11CC22DD330002 /* PrintCostCalculatorView.swift in Sources */,

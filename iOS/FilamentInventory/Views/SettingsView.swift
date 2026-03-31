@@ -7,12 +7,14 @@ struct SettingsView: View {
     @EnvironmentObject var store: InventoryStore
     @StateObject private var printerManager = PrinterManager.shared
     @StateObject private var cloudBackup = CloudBackupService.shared
+    @StateObject private var nasBackup = NASBackupService.shared
     @State private var nasURL: String = ""
     @State private var apiKey: String = ""
     @State private var connectionStatus: String = ""
     @State private var isTesting = false
     @State private var lowStockThreshold: Double = 200
     @State private var showResetAlert = false
+    @State private var showRestoreAlert = false
     @State private var showCharts = false
     @State private var showShopping = false
     @State private var showCostCalculator = false
@@ -302,6 +304,48 @@ struct SettingsView: View {
                     Text("Each printer can point to a different NAS backend. Tap a printer to set it as active.")
                 }
 
+                // NAS Backup
+                Section {
+                    Button(action: {
+                        Task { await nasBackup.backup(store: store, printerManager: printerManager, nas: nasService) }
+                    }) {
+                        HStack {
+                            if nasBackup.isBusy {
+                                ProgressView().scaleEffect(0.8)
+                            } else {
+                                Label("Back Up to NAS", systemImage: "arrow.up.doc.fill")
+                            }
+                        }
+                    }
+                    .disabled(nasBackup.isBusy)
+                    .foregroundColor(.orange)
+
+                    Button(action: { showRestoreAlert = true }) {
+                        Label("Restore from NAS", systemImage: "arrow.down.doc.fill")
+                    }
+                    .disabled(nasBackup.isBusy)
+                    .foregroundColor(.blue)
+
+                    if let last = nasBackup.lastBackupDate {
+                        HStack {
+                            Text("Last Backup")
+                            Spacer()
+                            Text(last, style: .relative)
+                                .foregroundColor(.secondary)
+                                .font(.caption)
+                        }
+                    }
+                    if !nasBackup.statusMessage.isEmpty {
+                        Text(nasBackup.statusMessage)
+                            .font(.caption)
+                            .foregroundColor(nasBackup.statusMessage.contains("✅") ? .green : .red)
+                    }
+                } header: {
+                    Text("NAS Backup")
+                } footer: {
+                    Text("Saves all spools, print jobs, printer configs, and app settings as a single file on your NAS. Use Restore after reinstalling the app to get everything back.")
+                }
+
                 // Backup & Restore
                 Section {
                     Button(action: triggerExport) {
@@ -377,6 +421,14 @@ struct SettingsView: View {
                 nasURL = nasService.baseURL
                 apiKey = nasService.apiKey
                 lowStockThreshold = UserDefaults.standard.double(forKey: "low_stock_threshold").nonZero ?? 200
+            }
+            .alert("Restore from NAS?", isPresented: $showRestoreAlert) {
+                Button("Restore", role: .destructive) {
+                    Task { await nasBackup.restore(nas: nasService, store: store, printerManager: printerManager) }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This will replace all current spools, print jobs, printer configs, and settings with the last backup saved on your NAS. This cannot be undone.")
             }
             .alert("Reset All Settings?", isPresented: $showResetAlert) {
                 Button("Reset", role: .destructive) {

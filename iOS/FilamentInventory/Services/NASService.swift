@@ -583,15 +583,56 @@ enum NASError: LocalizedError {
     case notConfigured
     case decodingError
     case unauthorized
+    case notFound
 
     var errorDescription: String? {
         switch self {
-        case .invalidURL: return "Invalid NAS URL"
-        case .serverError: return "NAS server returned an error"
+        case .invalidURL:    return "Invalid NAS URL"
+        case .serverError:   return "NAS server returned an error"
         case .notConfigured: return "NAS is not configured"
         case .decodingError: return "Failed to decode response"
-        case .unauthorized: return "API key incorrect — update Settings"
+        case .unauthorized:  return "API key incorrect — update Settings"
+        case .notFound:      return "No backup found on NAS"
         }
+    }
+}
+
+// MARK: - NAS Backup / Restore
+extension NASService {
+    func uploadFullBackup(_ data: Data) async throws {
+        guard let url = URL(string: "\(baseURL)/api/backup") else { throw NASError.invalidURL }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue(apiKey, forHTTPHeaderField: "X-API-Key")
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = data
+        let (_, response) = try await session.data(for: req)
+        guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw NASError.serverError }
+    }
+
+    func downloadFullBackup() async throws -> Data {
+        guard let url = URL(string: "\(baseURL)/api/backup") else { throw NASError.invalidURL }
+        var req = URLRequest(url: url)
+        req.setValue(apiKey, forHTTPHeaderField: "X-API-Key")
+        let (data, response) = try await session.data(for: req)
+        guard let http = response as? HTTPURLResponse else { throw NASError.serverError }
+        if http.statusCode == 404 { throw NASError.notFound }
+        guard http.statusCode == 200 else { throw NASError.serverError }
+        return data
+    }
+
+    func restoreToNAS(filaments: [Filament], printJobs: [PrintJob]) async throws {
+        guard let url = URL(string: "\(baseURL)/api/restore") else { throw NASError.invalidURL }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue(apiKey, forHTTPHeaderField: "X-API-Key")
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        struct Payload: Encodable { let filaments: [Filament]; let printJobs: [PrintJob] }
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        req.httpBody = try encoder.encode(Payload(filaments: filaments, printJobs: printJobs))
+        let (_, response) = try await session.data(for: req)
+        guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw NASError.serverError }
     }
 }
 

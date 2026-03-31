@@ -306,6 +306,60 @@ app.get('/api/stats', (req, res) => {
   }
 });
 
+// ── Full App Backup ────────────────────────────────────────────────────────────
+const BACKUP_PATH = path.join(dataDir, 'printhub-backup.json');
+
+// GET /api/backup — download the latest full backup JSON
+app.get('/api/backup', authenticate, (req, res) => {
+  if (!fs.existsSync(BACKUP_PATH)) {
+    return res.status(404).json({ error: 'No backup found on NAS' });
+  }
+  res.setHeader('Content-Type', 'application/json');
+  res.sendFile(path.resolve(BACKUP_PATH));
+});
+
+// POST /api/backup — save a full backup (sent as JSON body from the app)
+app.post('/api/backup', authenticate, (req, res) => {
+  try {
+    const backup = { ...req.body, savedAt: new Date().toISOString() };
+    fs.writeFileSync(BACKUP_PATH, JSON.stringify(backup));
+    console.log(`📦 Full backup saved at ${backup.savedAt}`);
+    res.json({ ok: true, savedAt: backup.savedAt });
+  } catch (e) {
+    console.error('Backup error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/restore — bulk-replace filaments and print jobs from a backup
+app.post('/api/restore', authenticate, (req, res) => {
+  const { filaments = [], printJobs = [] } = req.body;
+  try {
+    db.prepare('DELETE FROM filaments').run();
+    const insertF = db.prepare(
+      'INSERT OR REPLACE INTO filaments (id, data, created_at, updated_at) VALUES (?, ?, ?, ?)'
+    );
+    const now = new Date().toISOString();
+    for (const f of filaments) {
+      insertF.run(f.id, JSON.stringify(f), now, now);
+    }
+
+    db.prepare('DELETE FROM print_jobs').run();
+    const insertJ = db.prepare(
+      'INSERT OR REPLACE INTO print_jobs (id, filament_id, data, created_at) VALUES (?, ?, ?, ?)'
+    );
+    for (const j of printJobs) {
+      insertJ.run(j.id, j.filamentId || j.filament_id || '', JSON.stringify(j), now);
+    }
+
+    console.log(`🔄 Restore complete: ${filaments.length} filaments, ${printJobs.length} jobs`);
+    res.json({ ok: true, filaments: filaments.length, printJobs: printJobs.length });
+  } catch (e) {
+    console.error('Restore error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ── AMS Mappings ─────────────────────────────────────────────────────────────
 // GET all AMS slot → filament mappings
 app.get('/api/ams/mappings', (req, res) => {
