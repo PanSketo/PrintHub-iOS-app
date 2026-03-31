@@ -15,7 +15,8 @@ enum NASKeychainBridge {
     // ── Write ─────────────────────────────────────────────────────────────────
 
     static func save(url: String, key: String) {
-        guard let data = "\(url)\n\(key)".data(using: .utf8) else { return }
+        let payload: [String: String] = ["url": url, "key": key]
+        guard let data = try? JSONSerialization.data(withJSONObject: payload) else { return }
 
         // Try updating an existing item first
         let findQuery = baseQuery()
@@ -39,13 +40,24 @@ enum NASKeychainBridge {
         var result: AnyObject?
         let status = SecItemCopyMatching(readQuery as CFDictionary, &result)
         guard status == errSecSuccess,
-              let data = result as? Data,
-              let str  = String(data: data, encoding: .utf8) else { return nil }
+              let data = result as? Data else { return nil }
 
-        let parts = str.split(separator: "\n", maxSplits: 1, omittingEmptySubsequences: false)
-        let url   = parts.count > 0 ? String(parts[0]) : ""
-        let key   = parts.count > 1 ? String(parts[1]) : ""
-        return (url, key)
+        // Try JSON decoding first
+        if let json = try? JSONSerialization.jsonObject(with: data) as? [String: String],
+           let url = json["url"], let key = json["key"] {
+            return (url, key)
+        }
+
+        // Migration: fall back to legacy newline-delimited format, then re-save in JSON
+        if let str = String(data: data, encoding: .utf8) {
+            let parts = str.split(separator: "\n", maxSplits: 1, omittingEmptySubsequences: false)
+            let url   = parts.count > 0 ? String(parts[0]) : ""
+            let key   = parts.count > 1 ? String(parts[1]) : ""
+            save(url: url, key: key)  // re-save in new JSON format
+            return (url, key)
+        }
+
+        return nil
     }
 
     // ── Private ───────────────────────────────────────────────────────────────
