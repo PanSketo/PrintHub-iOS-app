@@ -5,9 +5,11 @@ struct InventoryListView: View {
     @State private var searchText = ""
     @State private var selectedType: FilamentType? = nil
     @State private var selectedStatus: StockStatus? = nil
-    @State private var viewMode: ViewMode = .grid
+    @AppStorage("inventory_view_mode") private var viewModeRaw: String = ViewMode.grid.rawValue
 
-    enum ViewMode { case grid, list }
+    enum ViewMode: String { case grid, list }
+
+    var viewMode: ViewMode { ViewMode(rawValue: viewModeRaw) ?? .grid }
 
     var filtered: [Filament] {
         store.filteredFilaments(searchText: searchText, type: selectedType, status: selectedStatus)
@@ -39,7 +41,7 @@ struct InventoryListView: View {
             .searchable(text: $searchText, prompt: "Search brand, color, type...")
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button(action: { viewMode = viewMode == .grid ? .list : .grid }) {
+                    Button(action: { viewModeRaw = viewMode == .grid ? ViewMode.list.rawValue : ViewMode.grid.rawValue }) {
                         Image(systemName: viewMode == .grid ? "list.bullet" : "square.grid.2x2")
                     }
                 }

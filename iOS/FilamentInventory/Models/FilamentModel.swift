@@ -50,7 +50,9 @@ struct Filament: Identifiable, Codable, Hashable {
     }
 
     var isLowStock: Bool {
-        remainingWeightG < 200
+        let threshold = UserDefaults.standard.double(forKey: "low_stock_threshold")
+        let t = threshold == 0 ? 200.0 : threshold
+        return remainingWeightG > 0 && remainingWeightG < t
     }
 
     var isEmpty: Bool {

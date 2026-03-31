@@ -70,6 +70,13 @@ struct RestockView: View {
                     .buttonStyle(.plain)
                     .padding(.horizontal)
                     .disabled(parsedPrice == 0)
+
+                    if parsedPrice == 0 {
+                        Text("Enter a price to continue")
+                            .font(.caption)
+                            .foregroundColor(.orange)
+                            .padding(.horizontal)
+                    }
                 }
                 .padding(.bottom, 40)
             }

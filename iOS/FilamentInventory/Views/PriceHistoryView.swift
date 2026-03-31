@@ -188,7 +188,7 @@ struct PriceTrendChart: View {
                         path.move(to: CGPoint(x: pts[0].x, y: h))
                         path.addLine(to: pts[0])
                         for p in pts.dropFirst() { path.addLine(to: p) }
-                        path.addLine(to: CGPoint(x: pts.last!.x, y: h))
+                        path.addLine(to: CGPoint(x: pts.last?.x ?? w, y: h))
                         path.closeSubpath()
                     }
                     .fill(LinearGradient(colors: [.orange.opacity(0.3), .clear],

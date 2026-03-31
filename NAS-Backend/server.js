@@ -19,6 +19,11 @@ fs.mkdirSync(THUMB_CACHE, { recursive: true });
 const app = express();
 const PORT = process.env.PORT || 3456;
 const API_KEY = process.env.API_KEY || 'change-this-to-a-strong-random-key';
+
+if (!process.env.API_KEY || process.env.API_KEY === 'change-this-to-a-strong-random-key') {
+  console.error('❌ API_KEY environment variable must be set to a strong secret key');
+  process.exit(1);
+}
 const PRINTER_IP           = process.env.PRINTER_IP           || '';
 const PRINTER_ACCESS_CODE  = process.env.PRINTER_ACCESS_CODE  || '';
 const PRINTER_SERIAL       = process.env.PRINTER_SERIAL       || '';
@@ -95,9 +100,9 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', version: '1.0.0', timestamp: new Date().toISOString() });
 });
 
-// ── Debug: walk FTP root and find timelapse folders — PUBLIC, no auth ─────────
+// ── Debug: walk FTP root and find timelapse folders ───────────────────────────
 // GET /api/printer/ftp-tree  — lists root dirs and checks for timelapse inside each
-app.get('/api/printer/ftp-tree', async (req, res) => {
+app.get('/api/printer/ftp-tree', authenticate, async (req, res) => {
   if (!PRINTER_IP || !PRINTER_ACCESS_CODE) {
     return res.json({ error: 'Printer not configured' });
   }
@@ -146,8 +151,8 @@ app.get('/api/printer/ftp-tree', async (req, res) => {
   }
 });
 
-// ── Debug: dump printer_state table — PUBLIC, no auth needed
-app.get('/api/printer/debug', (req, res) => {
+// ── Debug: dump printer_state table ──────────────────────────────────────────
+app.get('/api/printer/debug', authenticate, (req, res) => {
   try {
     db.exec(`CREATE TABLE IF NOT EXISTS printer_state (key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at TEXT DEFAULT (datetime('now')))`);
     const rows = db.prepare('SELECT key, value, updated_at FROM printer_state').all();
