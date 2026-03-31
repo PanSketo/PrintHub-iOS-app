@@ -67,25 +67,32 @@ enum FilamentType: String, Codable, CaseIterable {
     case abs = "ABS"
     case petg = "PETG"
     case tpu = "TPU"
+    case tpe = "TPE"
+    case flex = "Flex"
     case asa = "ASA"
     case nylon = "Nylon"
     case wood = "Wood"
     case silk = "Silk"
     case carbon = "Carbon Fiber"
-    case resin = "Resin"
     case hips = "HIPS"
     case pva = "PVA"
     case other = "Other"
 
+    // Gracefully handle legacy "Resin" values and any future unknown types
+    init(from decoder: Decoder) throws {
+        let raw = try decoder.singleValueContainer().decode(String.self)
+        self = FilamentType(rawValue: raw) ?? .other
+    }
+
     var icon: String {
         switch self {
-        case .pla, .plaPlus: return "circle.fill"
-        case .abs: return "hexagon.fill"
-        case .petg: return "diamond.fill"
-        case .tpu: return "heart.fill"
-        case .silk: return "star.fill"
-        case .carbon: return "bolt.fill"
-        default: return "capsule.fill"
+        case .pla, .plaPlus:    return "circle.fill"
+        case .abs:              return "hexagon.fill"
+        case .petg:             return "diamond.fill"
+        case .tpu, .tpe, .flex: return "heart.fill"
+        case .silk:             return "star.fill"
+        case .carbon:           return "bolt.fill"
+        default:                return "capsule.fill"
         }
     }
 }

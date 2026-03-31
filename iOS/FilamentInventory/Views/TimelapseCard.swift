@@ -17,6 +17,9 @@ struct TimelapseCard: View {
     @State private var savingPath: String? = nil
     @State private var toast = ""
 
+    private let pageSize = 10
+    @State private var displayedCount = 10
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             // Header
@@ -50,13 +53,25 @@ struct TimelapseCard: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             } else {
-                ForEach(timelapses) { file in
+                ForEach(timelapses.prefix(displayedCount)) { file in
                     TimelapseRow(
                         file: file,
                         isSaving: savingPath == file.path,
                         onPlay: { playerItem = file },
                         onSave: { Task { await saveToPhotos(file) } }
                     )
+                }
+                if timelapses.count > displayedCount {
+                    Button {
+                        displayedCount += pageSize
+                    } label: {
+                        Text("Load More (\(timelapses.count - displayedCount) remaining)")
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.orange)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 8)
+                    }
                 }
             }
 
@@ -88,6 +103,7 @@ struct TimelapseCard: View {
     func load() {
         isLoading = true
         error = nil
+        displayedCount = pageSize
         Task {
             do {
                 let result = try await nasService.fetchTimelapses(using: printerConfig)

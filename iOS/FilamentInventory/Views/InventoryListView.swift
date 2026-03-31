@@ -17,26 +17,56 @@ struct InventoryListView: View {
 
     @State private var showAddFilament = false
 
+    // Undo delete
+    @State private var undoFilament: Filament? = nil
+    @State private var undoTask: Task<Void, Never>? = nil
+
     var body: some View {
         NavigationStack {
-            Group {
-                if store.filaments.isEmpty && !store.isLoading {
-                    EmptyInventoryView()
-                } else {
-                    VStack(spacing: 0) {
-                        // Filter chips
-                        FilterChipsView(selectedType: $selectedType, selectedStatus: $selectedStatus)
-                            .padding(.horizontal)
-                            .padding(.top, 8)
+            ZStack(alignment: .bottom) {
+                Group {
+                    if store.filaments.isEmpty && !store.isLoading {
+                        EmptyInventoryView()
+                    } else {
+                        VStack(spacing: 0) {
+                            FilterChipsView(selectedType: $selectedType, selectedStatus: $selectedStatus)
+                                .padding(.horizontal)
+                                .padding(.top, 8)
 
-                        if viewMode == .grid {
-                            GridInventoryView(filaments: filtered)
-                        } else {
-                            ListInventoryView(filaments: filtered)
+                            if viewMode == .grid {
+                                GridInventoryView(filaments: filtered)
+                            } else {
+                                ListInventoryView(filaments: filtered)
+                            }
                         }
                     }
                 }
+
+                // Undo banner
+                if let undo = undoFilament {
+                    HStack {
+                        Text("\(undo.brand) \(undo.type.rawValue) deleted")
+                            .font(.subheadline)
+                        Spacer()
+                        Button("Undo") {
+                            undoTask?.cancel()
+                            store.restore(undo)
+                            undoFilament = nil
+                        }
+                        .fontWeight(.bold)
+                        .foregroundColor(.orange)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .background(.regularMaterial)
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 12)
+                    .shadow(radius: 6)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
             }
+            .animation(.spring(response: 0.35), value: undoFilament != nil)
             .navigationTitle("Inventory")
             .searchable(text: $searchText, prompt: "Search brand, color, type...")
             .toolbar {
@@ -56,6 +86,36 @@ struct InventoryListView: View {
                     .environmentObject(store)
             }
         }
+        .environment(\.deleteFilament, deleteWithUndo)
+    }
+
+    private func deleteWithUndo(id: String) {
+        // Commit any previous pending delete before starting a new one
+        if let previous = undoFilament {
+            undoTask?.cancel()
+            store.confirmDelete(id: previous.id)
+        }
+        guard let removed = store.removeLocally(id: id) else { return }
+        undoFilament = removed
+        undoTask = Task {
+            try? await Task.sleep(nanoseconds: 4_000_000_000)
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                store.confirmDelete(id: removed.id)
+                undoFilament = nil
+            }
+        }
+    }
+}
+
+// MARK: - DeleteFilament environment key
+private struct DeleteFilamentKey: EnvironmentKey {
+    static let defaultValue: (String) -> Void = { _ in }
+}
+extension EnvironmentValues {
+    var deleteFilament: (String) -> Void {
+        get { self[DeleteFilamentKey.self] }
+        set { self[DeleteFilamentKey.self] = newValue }
     }
 }
 
@@ -338,6 +398,7 @@ struct FilamentGridCard: View {
 // MARK: - List View
 struct ListInventoryView: View {
     @EnvironmentObject var store: InventoryStore
+    @Environment(\.deleteFilament) var deleteFilament
     let filaments: [Filament]
 
     var body: some View {
@@ -361,7 +422,7 @@ struct ListInventoryView: View {
             }
             .onDelete { indexSet in
                 indexSet.forEach { idx in
-                    store.deleteFilament(id: filaments[idx].id)
+                    deleteFilament(filaments[idx].id)
                 }
             }
         }

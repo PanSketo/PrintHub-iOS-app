@@ -170,6 +170,37 @@ class InventoryStore: ObservableObject {
     }
 
     // MARK: - Delete Filament
+
+    /// Immediately removes from the local array and returns the filament for undo.
+    /// Call confirmDelete(id:) after the undo window to remove from NAS.
+    @MainActor
+    func removeLocally(id: String) -> Filament? {
+        guard let idx = filaments.firstIndex(where: { $0.id == id }) else { return nil }
+        let filament = filaments[idx]
+        filaments.remove(at: idx)
+        saveToLocalCache()
+        return filament
+    }
+
+    /// Restores a previously removed filament (undo path).
+    @MainActor
+    func restore(_ filament: Filament) {
+        filaments.append(filament)
+        filaments.sort { $0.brand.lowercased() < $1.brand.lowercased() }
+        saveToLocalCache()
+    }
+
+    /// Commits the delete to NAS — call this after the undo window expires.
+    func confirmDelete(id: String) {
+        Task {
+            do {
+                try await nas.deleteFilament(id: id)
+            } catch {
+                await MainActor.run { self.errorMessage = error.localizedDescription }
+            }
+        }
+    }
+
     func deleteFilament(id: String) {
         Task {
             do {
