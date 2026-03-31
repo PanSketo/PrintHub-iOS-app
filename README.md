@@ -62,12 +62,33 @@ A personal iOS app to manage your 3D printer filament inventory, monitor live pr
 ### Siri & Shortcuts
 - 🎙️ **App Intents** — Siri Shortcuts integration for quick inventory actions
 
+### Print Cost Calculator
+- 🧮 **Full business cost model** — calculates the true cost and selling price of any print job
+- 🧵 **Filament cost** — pulls price-per-gram directly from your inventory; supports up to 4 filament slots per job with automatic failure/waste buffer (default 2%)
+- ⚡ **Electricity cost** — configurable kWh rate × printer wattage × print duration
+- 🔧 **Printer depreciation** — printer purchase price ÷ estimated lifetime hours, amortised per job
+- 🪛 **Consumables** — nozzles, build plates, maintenance expressed as €/h (default €0.125/h)
+- 🏢 **Monthly overhead** — fixed business costs split across prints:
+  - Rent (default €400/mo)
+  - Internet (default €50/mo)
+  - Accounting (default €50/mo)
+  - Misc (fully editable, default €0)
+  - Monthly print hours to amortise them (default 80 h/mo); section footer shows live €/h rate
+- 💹 **True profit margin** — margin as % of selling price (`selling price = cost ÷ (1 − margin%)`), not a simple markup
+- 📋 **Live breakdown** — Filament · Electricity · Printer Wear · Consumables · Fixed Overhead · Total Cost · Profit · **Selling Price** (the number to quote the customer)
+- 💾 **All settings persisted** — every field is saved via `@AppStorage`; values survive app restarts
+- ⏱️ **Duration input** — separate Hours and Minutes steppers, cleanly aligned
+- ⌨️ **Keyboard toolbar** — "Done" button dismisses the decimal pad; form also dismisses on scroll
+- Accessible from **Settings → Tools → Print Cost Calculator**
+
 ### Settings & UI
 - 🌗 **Appearance themes** — System / Light / Dark mode
 - 🔔 **Configurable low-stock threshold** — slider from 50 g to 500 g (default 200 g)
 - 🔔 **Push notifications** — alert when any spool drops below the threshold
 - 🪟 **Liquid Glass UI** — adaptive glass morphism style (iOS 26 native, graceful fallback on iOS 16–25)
 - ⌨️ **Keyboard UX** — scroll to dismiss keyboard; all form buttons respond on first tap
+- 🛠️ **Tools section in Settings** — Statistics & Charts, Shopping List, and Print Cost Calculator all accessible as buttons in a dedicated Tools section
+- 💡 **Chamber light icon** — clearly visible in both light and dark mode; uses `.primary` colour with `systemGray5` background when off, yellow tint when on
 - ✅ **iOS 26 compatible** — all deprecated APIs replaced (`NavigationView` → `NavigationStack`, `.accentColor` → `.tint`, `.cornerRadius` → `.clipShape`, `.onChange` two-parameter form)
 
 ---
@@ -81,7 +102,7 @@ PrintHub uses a **4-tab** structure:
 | Dashboard | `square.grid.2x2.fill` | Stats cards, camera feed, timelapse viewer, low stock, recent prints |
 | Inventory | `shippingbox.fill` | Grid/list of spools, filter chips, search; **+** button opens Add Spool sheet |
 | Printer | `printer.fill` | **Live Status** · **Print Files** · **Print Log** (segmented picker) |
-| Settings | `gearshape.fill` | NAS config, printer profiles, backup/restore, charts, shopping list, appearance |
+| Settings | `gearshape.fill` | **Tools** (Statistics & Charts, Shopping List, Print Cost Calculator) · NAS config · Printer profiles · Backup/restore · Appearance |
 
 ---
 
@@ -121,7 +142,8 @@ fil-inv/
 │           ├── PrinterView.swift             # Printer hub (status + files + log)
 │           ├── CameraFeedCard.swift          # Live MJPEG camera stream + light toggle
 │           ├── BarcodeScannerView.swift      # AVFoundation camera scanner
-│           ├── SettingsView.swift            # NAS config, printers, backup, theme
+│           ├── PrintCostCalculatorView.swift # Business cost calculator (filament + overhead + margin)
+│           ├── SettingsView.swift            # NAS config, printers, backup, theme, tools
 │           └── GlassStyle.swift             # Liquid glass / card styling
 ├── NAS-Backend/
 │   ├── server.js                            # Express REST API + SQLite + FTP proxy
@@ -215,12 +237,21 @@ sudo docker-compose logs --tail=30
 
 ---
 
-## Step 3 — Sign and Install with Signulous
+## Step 3 — Sign and Install
 
+### Signulous (Recommended — no expiry)
 1. Open **Signulous** on your iPhone (or their website)
-2. Upload the `FilamentInventory.ipa` you downloaded
-3. Signulous signs it with your certificate
+2. Upload the `PrintHub.ipa` you downloaded
+3. Signulous signs it with their enterprise certificate
 4. Install on your iPhone — done! 🎉
+
+### Sideloadly (free, 7-day re-sign with free Apple ID)
+1. Download [Sideloadly](https://sideloadly.io) on your Mac/PC
+2. Connect your iPhone, drag the `.ipa` in, sign with your Apple ID
+3. On iPhone: **Settings → General → VPN & Device Management → trust your Apple ID**
+4. Re-sign every 7 days (or use a paid Apple Developer account to avoid this)
+
+> **Note — Apple Watch complication:** The Watch app code is included in the project but is stripped from the IPA at build time. Third-party re-signing tools (Signulous, Sideloadly) cannot correctly re-sign WatchKit companion entitlements, which causes iOS to reject the installation entirely. Watch complications will be re-enabled once a paid Apple Developer account ($99/yr) is set up for proper Ad Hoc or TestFlight distribution.
 
 ---
 
@@ -348,6 +379,7 @@ The **Timelapses** card on the Dashboard lists all `.mp4` timelapse recordings s
 |-------|-----------|
 | iOS app | Swift 5.9 + SwiftUI + AVKit + Photos + AVFoundation + App Intents |
 | Min iOS | 16.0 (Liquid Glass UI on iOS 26+, fully iOS 26 API-compatible) |
+| Watch app | watchOS 9.0+ (compiled, stripped from sideload IPA — requires Apple Developer account) |
 | Backend | Node.js + Express + better-sqlite3 |
 | Database | SQLite (Docker volume on NAS) |
 | Printer comms | MQTT over TLS (Bambu Lab) + implicit FTPS port 990 (basic-ftp) |
