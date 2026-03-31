@@ -646,12 +646,7 @@ struct AMSMappingCard: View {
     var printerConfig: PrinterConfig?
     @EnvironmentObject var nasService: NASService
     @State private var savedMessage = ""
-
-    // P2S with AMS 2 Pro has up to 2 AMS units × 4 slots = 8 slots
-    let allSlots: [(amsIndex: Int, slotIndex: Int)] = [
-        (0,0),(0,1),(0,2),(0,3),
-        (1,0),(1,1),(1,2),(1,3)
-    ]
+    @AppStorage("ams_unit_count") private var amsUnitCount: Int = 1
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -668,10 +663,23 @@ struct AMSMappingCard: View {
             Text("Map each AMS slot to a filament in your inventory so prints are auto-deducted.")
                 .font(.caption).foregroundColor(.secondary)
 
-            ForEach(0..<2, id: \.self) { amsIdx in
+            ForEach(0..<amsUnitCount, id: \.self) { amsIdx in
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("AMS Unit \(amsIdx + 1)")
-                        .font(.caption).fontWeight(.bold).foregroundColor(.secondary)
+                    HStack {
+                        Text("AMS Unit \(amsIdx + 1)")
+                            .font(.caption).fontWeight(.bold).foregroundColor(.secondary)
+                        Spacer()
+                        // Allow removing the last unit (but not the first)
+                        if amsIdx > 0 && amsIdx == amsUnitCount - 1 {
+                            Button {
+                                amsUnitCount -= 1
+                            } label: {
+                                Image(systemName: "minus.circle.fill")
+                                    .foregroundColor(.red.opacity(0.8))
+                                    .font(.subheadline)
+                            }
+                        }
+                    }
 
                     ForEach(0..<4, id: \.self) { slotIdx in
                         let key = "ams_\(amsIdx)_slot_\(slotIdx)"
@@ -689,7 +697,20 @@ struct AMSMappingCard: View {
                         )
                     }
                 }
-                if amsIdx == 0 { Divider() }
+                if amsIdx < amsUnitCount - 1 { Divider() }
+            }
+
+            // Add next AMS unit (max 4)
+            if amsUnitCount < 4 {
+                Divider()
+                Button {
+                    amsUnitCount += 1
+                } label: {
+                    Label("Add AMS Unit \(amsUnitCount + 1)", systemImage: "plus.circle.fill")
+                        .font(.subheadline)
+                        .foregroundColor(.orange)
+                }
+                .padding(.top, 2)
             }
         }
         .padding()
