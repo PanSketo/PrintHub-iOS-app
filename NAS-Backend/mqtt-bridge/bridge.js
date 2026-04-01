@@ -292,14 +292,16 @@ function processPrinterMessage(payload) {
       // Print just finished successfully
       if (currentState === 'FINISH' && lastPrintState === 'RUNNING') {
         insertPrinterEvent('print_completed', currentPrintName, null);
-        handlePrintComplete(false);
+        // Delay 5 s: Bambu sends mc_print_filament_used in a follow-up message
+        // after the FINISH state, so we wait for it before processing.
+        setTimeout(() => handlePrintComplete(false), 5000);
       }
 
       // Print failed
       if (currentState === 'FAILED' && lastPrintState === 'RUNNING') {
         const reason = lastPrintError ? `Error code: ${lastPrintError}` : null;
         insertPrinterEvent('print_failed', currentPrintName, reason);
-        handlePrintComplete(true);
+        setTimeout(() => handlePrintComplete(true), 5000);
       }
 
       lastPrintState = currentState;
@@ -324,30 +326,39 @@ function handlePrintComplete(failed) {
     return;
   }
 
-  // For each mapped slot, calculate weight used
-  // Bambu reports "remain" as a percentage — we use the delta vs start snapshot
-  // If no delta available (Bambu doesn't always report %), we use a reasonable estimate
+  // For each mapped slot, calculate weight used.
+  // Primary method: AMS % delta (works for Bambu-brand / NFC-detected spools).
+  // Per-slot fallback: if AMS can't read % (third-party filament), use the
+  // printer's exact gram report for whichever slot was last active.
   let totalDeducted = 0;
 
   mappings.forEach(({ slot_key, filament_id }) => {
-    const slotData = lastAMSReport[slot_key];
-    if (!slotData) return;
-
+    const slotData = lastAMSReport[slot_key];   // may be undefined for undetected slots
     const filament = getFilament(filament_id);
     if (!filament) return;
 
-    // Calculate weight used
     let weightUsed = 0;
 
-    if (slotData.remain >= 0 && weightAtStart[slot_key] >= 0) {
-      // Use percentage delta × total weight
-      const remainDelta = weightAtStart[slot_key] - slotData.remain;
+    const startRemain = weightAtStart[slot_key] ?? -1;
+    const endRemain   = slotData?.remain        ?? -1;
+
+    if (endRemain >= 0 && startRemain >= 0) {
+      // Primary: use percentage delta × total spool weight
+      const remainDelta = startRemain - endRemain;
       if (remainDelta > 0) {
         weightUsed = (remainDelta / 100) * (filament.totalWeightG || 1000);
       }
+    } else if (slot_key === lastActiveSlotKey && lastFilamentUsedReport !== null) {
+      // Per-slot fallback: this was the active slot but AMS couldn't read %
+      // (third-party / non-NFC filament) — use the printer's gram report instead.
+      const grams = parseFloat(lastFilamentUsedReport);
+      if (grams > 0.5) {
+        weightUsed = grams;
+        console.log(`ℹ️  AMS % unavailable for ${slot_key} (third-party filament) — using printer report: ${grams}g`);
+      }
     }
 
-    // Minimum threshold — only log if meaningful weight was used (>0.5g)
+    // Only log if meaningful weight was used (>0.5g)
     if (weightUsed > 0.5) {
       deductFilamentWeight(
         filament_id,
@@ -359,11 +370,11 @@ function handlePrintComplete(failed) {
     }
   });
 
-  // Fallback: AMS % delta unavailable (non-NFC spools) — use exact grams from printer
+  // Last-resort fallback: no slot had usable data at all — use printer gram report
+  // against whichever slot was last active (or the first mapped slot).
   if (totalDeducted === 0 && lastFilamentUsedReport !== null) {
     const totalGrams = parseFloat(lastFilamentUsedReport);
     if (totalGrams > 0.5) {
-      // Prefer the slot that was last active; fall back to first mapped slot
       const targetMapping =
         mappings.find(m => m.slot_key === lastActiveSlotKey) || mappings[0];
       if (targetMapping) {
@@ -374,7 +385,7 @@ function handlePrintComplete(failed) {
           durationSeconds
         );
         totalDeducted = totalGrams;
-        console.log(`ℹ️  AMS % unavailable — used printer report: ${totalGrams}g → ${targetMapping.slot_key}`);
+        console.log(`ℹ️  Last-resort fallback — used printer report: ${totalGrams}g → ${targetMapping.slot_key}`);
       }
     }
   }
