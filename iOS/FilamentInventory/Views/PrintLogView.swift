@@ -103,6 +103,7 @@ struct PrintLogView: View {
             }
             .navigationTitle("Print Log")
             .searchable(text: $searchText, prompt: "Search prints...")
+            .task { store.refreshUntrackedPrints() }
             .sheet(item: $logSheet) { item in
                 ManualPrintLogSheet(untracked: item)
                     .environmentObject(store)
