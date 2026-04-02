@@ -260,7 +260,7 @@ class InventoryStore: ObservableObject {
 
     func refreshUntrackedPrints() {
         Task {
-            guard nas.isConfigured, nas.isConnected else { return }
+            guard nas.isConfigured else { return }
             if let prints = try? await nas.fetchUntrackedPrints() {
                 await MainActor.run { self.untrackedPrints = prints }
             }
