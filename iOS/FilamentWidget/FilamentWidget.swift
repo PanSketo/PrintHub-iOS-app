@@ -30,6 +30,13 @@ private func keychainLoad() -> (url: String, key: String)? {
           let str  = String(data: data, encoding: .utf8)
     else { return nil }
 
+    // Try JSON format first (current main app format)
+    if let jsonData = str.data(using: .utf8),
+       let json = try? JSONSerialization.jsonObject(with: jsonData) as? [String: String],
+       let url = json["url"], let key = json["key"], !url.isEmpty {
+        return (url, key)
+    }
+    // Fall back to legacy newline-delimited format
     let parts = str.split(separator: "\n", maxSplits: 1, omittingEmptySubsequences: false)
     let url   = parts.count > 0 ? String(parts[0]).trimmingCharacters(in: .whitespacesAndNewlines) : ""
     let key   = parts.count > 1 ? String(parts[1]).trimmingCharacters(in: .whitespacesAndNewlines) : ""
