@@ -3,6 +3,7 @@ import SwiftUI
 struct PrintLogView: View {
     @EnvironmentObject var store: InventoryStore
     @State private var searchText = ""
+    @State private var logSheet: NASService.UntrackedPrint?
 
     var filteredJobs: [PrintJob] {
         let jobs = store.printJobs.sorted(by: { $0.date > $1.date })
@@ -61,6 +62,36 @@ struct PrintLogView: View {
                     .padding(.vertical, 8)
                 }
 
+                // Untracked prints — need manual weight entry
+                if !store.untrackedPrints.isEmpty {
+                    Section {
+                        ForEach(store.untrackedPrints) { item in
+                            HStack {
+                                Image(systemName: "exclamationmark.circle.fill")
+                                    .foregroundColor(.orange)
+                                    .font(.title3)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(item.printName)
+                                        .font(.subheadline)
+                                        .fontWeight(.semibold)
+                                    Text("Weight not logged — tap to enter")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                Spacer()
+                                Button("Log") { logSheet = item }
+                                    .buttonStyle(.borderedProminent)
+                                    .tint(.orange)
+                                    .controlSize(.small)
+                            }
+                            .padding(.vertical, 2)
+                        }
+                    } header: {
+                        Text("Needs Manual Entry")
+                            .foregroundColor(.orange)
+                    }
+                }
+
                 // Grouped by date
                 ForEach(groupedByDate.keys.sorted(by: >), id: \.self) { date in
                     Section(header: Text(date.formatted(date: .abbreviated, time: .omitted))) {
@@ -72,6 +103,10 @@ struct PrintLogView: View {
             }
             .navigationTitle("Print Log")
             .searchable(text: $searchText, prompt: "Search prints...")
+            .sheet(item: $logSheet) { item in
+                ManualPrintLogSheet(untracked: item)
+                    .environmentObject(store)
+            }
             .overlay {
                 if store.printJobs.isEmpty {
                     VStack(spacing: 16) {

@@ -232,6 +232,57 @@ class NASService: ObservableObject {
         return try NASService.makeDateDecoder().decode([PrinterEvent].self, from: data)
     }
 
+    // MARK: - Untracked Prints
+
+    struct UntrackedPrint: Codable, Identifiable {
+        let id: String
+        let printName: String
+        let createdAt: Date
+        let activeSlotKey: String?
+        let durationSeconds: Double?
+
+        enum CodingKeys: String, CodingKey {
+            case id, printName, createdAt, reason
+        }
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            id        = try c.decode(String.self, forKey: .id)
+            printName = try c.decode(String.self, forKey: .printName)
+            createdAt = try c.decode(Date.self,   forKey: .createdAt)
+            if let reasonStr = try? c.decode(String.self, forKey: .reason),
+               let data = reasonStr.data(using: .utf8),
+               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                activeSlotKey   = json["activeSlotKey"]   as? String
+                durationSeconds = json["durationSeconds"] as? Double
+            } else {
+                activeSlotKey   = nil
+                durationSeconds = nil
+            }
+        }
+    }
+
+    func fetchUntrackedPrints() async throws -> [UntrackedPrint] {
+        guard let url = URL(string: "\(baseURL)/api/printer/untracked-prints") else {
+            throw NASError.invalidURL
+        }
+        var request = URLRequest(url: url)
+        request.addValue(apiKey, forHTTPHeaderField: "X-API-Key")
+        let (data, response) = try await session.data(for: request)
+        guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw NASError.serverError }
+        return try NASService.makeDateDecoder().decode([UntrackedPrint].self, from: data)
+    }
+
+    func clearUntrackedPrint(id: String) async throws {
+        guard let url = URL(string: "\(baseURL)/api/printer/untracked-prints/\(id)") else {
+            throw NASError.invalidURL
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "DELETE"
+        request.addValue(apiKey, forHTTPHeaderField: "X-API-Key")
+        let (_, response) = try await session.data(for: request)
+        guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw NASError.serverError }
+    }
+
     /// Polls for new print events and fires local notifications. Rate-limited to once per 20 s
     /// per printer. Accepts an optional PrinterConfig; falls back to the global NAS when nil.
     private var lastEventCheckByPrinter: [String: Date] = [:]
@@ -280,6 +331,9 @@ class NASService: ObservableObject {
                     NotificationManager.shared.notifyPrintCompleted(printName: event.printName)
                 case "print_failed":
                     NotificationManager.shared.notifyPrintFailed(printName: event.printName, reason: event.reason)
+                case "print_untracked":
+                    NotificationManager.shared.notifyPrintUntracked(printName: event.printName)
+                    await MainActor.run { InventoryStore.shared.refreshUntrackedPrints() }
                 default:
                     break
                 }

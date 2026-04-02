@@ -934,6 +934,37 @@ app.get('/api/printer/events', (req, res) => {
   }
 });
 
+// ── Untracked Prints (prints the bridge couldn't auto-log) ───────────────────
+// Returns all print_untracked events so the iOS app can prompt manual weight entry.
+app.get('/api/printer/untracked-prints', authenticate, (req, res) => {
+  try {
+    const rows = db.prepare(`
+      SELECT id, print_name, reason, created_at
+      FROM printer_events
+      WHERE event_type = 'print_untracked'
+      ORDER BY created_at DESC
+    `).all();
+    res.json(rows.map(r => ({
+      id: r.id,
+      printName: r.print_name || '',
+      reason: r.reason || null,
+      createdAt: r.created_at.replace(' ', 'T') + 'Z'
+    })));
+  } catch (err) {
+    res.json([]);
+  }
+});
+
+// Dismiss an untracked print event (called after user manually logs the weight).
+app.delete('/api/printer/untracked-prints/:id', authenticate, (req, res) => {
+  try {
+    db.prepare(`DELETE FROM printer_events WHERE id = ? AND event_type = 'print_untracked'`).run(req.params.id);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── Image mirroring ───────────────────────────────────────────────────────────
 // Downloads a remote image URL and stores it locally so it survives link rot.
 // Same URL always produces the same filename (SHA-256 of URL), acting as a cache.
