@@ -52,6 +52,21 @@ class NotificationManager: ObservableObject {
         center.add(request)
     }
 
+    func notifyPrintUntracked(printName: String) {
+        let content = UNMutableNotificationContent()
+        content.title = "Log Print Weight"
+        content.body = printName.isEmpty
+            ? "A print finished but weight wasn't auto-logged. Tap to enter it manually."
+            : "\"\(printName)\" finished but weight wasn't auto-logged. Tap to enter it manually."
+        content.sound = .default
+        let request = UNNotificationRequest(
+            identifier: "print_untracked_\(UUID().uuidString)",
+            content: content,
+            trigger: UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
+        )
+        center.add(request)
+    }
+
     // MARK: - Low Stock Notifications
 
     func scheduleAlertIfNeeded(for filament: Filament) {

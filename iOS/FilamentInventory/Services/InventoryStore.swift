@@ -6,6 +6,7 @@ class InventoryStore: ObservableObject {
 
     @Published var filaments: [Filament] = []
     @Published var printJobs: [PrintJob] = []
+    @Published var untrackedPrints: [NASService.UntrackedPrint] = []
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
     @Published var lowStockThreshold: Double = 200
@@ -54,6 +55,7 @@ class InventoryStore: ObservableObject {
                     self.isLoading = false
                     self.saveToLocalCache()
                 }
+                refreshUntrackedPrints()
                 // Back-fill missing images silently in background
                 await backfillMissingImages(fetchedFilaments)
             } catch {
@@ -250,6 +252,37 @@ class InventoryStore: ObservableObject {
 
             } catch {
                 await MainActor.run { self.errorMessage = error.localizedDescription }
+            }
+        }
+    }
+
+    // MARK: - Untracked Prints
+
+    func refreshUntrackedPrints() {
+        Task {
+            guard nas.isConfigured, nas.isConnected else { return }
+            if let prints = try? await nas.fetchUntrackedPrints() {
+                await MainActor.run { self.untrackedPrints = prints }
+            }
+        }
+    }
+
+    func logUntrackedPrint(eventId: String, filamentId: String, printName: String, weightG: Double, durationSeconds: Double?, success: Bool) {
+        let job = PrintJob(
+            id: UUID().uuidString,
+            filamentId: filamentId,
+            printName: printName,
+            weightUsedG: weightG,
+            duration: durationSeconds,
+            date: Date(),
+            notes: "Manually logged",
+            success: success
+        )
+        logPrintJob(job)
+        Task {
+            try? await nas.clearUntrackedPrint(id: eventId)
+            await MainActor.run {
+                self.untrackedPrints.removeAll { $0.id == eventId }
             }
         }
     }

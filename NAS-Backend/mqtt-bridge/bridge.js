@@ -240,6 +240,21 @@ function processPrinterMessage(payload) {
           lastActiveSlotKey = `ams_0_slot_${slotIdx}`;
         }
       }
+
+      // Rolling start-snapshot: if the print just started and we didn't have valid
+      // remain% yet (bridge reconnected mid-prepare, or AMS was still initialising),
+      // update weightAtStart with the first valid value we see in the first 60 s.
+      if (printStartTime && lastPrintState === 'RUNNING') {
+        const elapsedMs = Date.now() - printStartTime;
+        if (elapsedMs < 60000) {
+          Object.entries(amsSlots).forEach(([key, slot]) => {
+            if (slot.remain >= 0 && (weightAtStart[key] === undefined || weightAtStart[key] < 0)) {
+              weightAtStart[key] = slot.remain;
+              console.log(`📍 Updated start snapshot for ${key}: ${slot.remain}%`);
+            }
+          });
+        }
+      }
     }
 
     // ── Capture exact filament usage reported by printer (grams) ─────────────
@@ -318,6 +333,11 @@ function handlePrintComplete(failed) {
   const durationSeconds = durationMs ? Math.round(durationMs / 1000) : null;
 
   console.log(`${failed ? '❌' : '✅'} Print ${failed ? 'FAILED' : 'FINISHED'}: "${currentPrintName}"`);
+  console.log(`   Active slot: ${lastActiveSlotKey || 'unknown'} | filamentUsed: ${lastFilamentUsedReport ?? 'null'}g`);
+  console.log(`   AMS slots in report: ${Object.keys(lastAMSReport).join(', ') || 'none'}`);
+  Object.entries(lastAMSReport).forEach(([k, v]) => {
+    console.log(`   ${k}: remain=${v.remain}% (start was ${weightAtStart[k] ?? 'unknown'}%)`);
+  });;
 
   // Get all AMS mappings
   const mappings = db.prepare('SELECT slot_key, filament_id FROM ams_mappings').all();
@@ -391,7 +411,19 @@ function handlePrintComplete(failed) {
   }
 
   if (totalDeducted === 0) {
-    console.log('ℹ️  No weight deducted (no printer weight data and AMS% unavailable)');
+    console.log('ℹ️  No weight deducted — inserting untracked print event for manual entry');
+    try {
+      db.prepare(`
+        INSERT INTO printer_events (id, event_type, print_name, reason, created_at)
+        VALUES (?, 'print_untracked', ?, ?, datetime('now'))
+      `).run(
+        crypto.randomUUID(),
+        currentPrintName || 'Unknown print',
+        JSON.stringify({ activeSlotKey: lastActiveSlotKey, durationSeconds })
+      );
+    } catch (err) {
+      console.warn('Could not insert untracked print event:', err.message);
+    }
   }
 
   // Reset tracking
