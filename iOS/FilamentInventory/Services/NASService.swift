@@ -234,7 +234,7 @@ class NASService: ObservableObject {
 
     // MARK: - Untracked Prints
 
-    struct UntrackedPrint: Codable, Identifiable {
+    struct UntrackedPrint: Decodable, Identifiable {
         let id: String
         let printName: String
         let createdAt: Date
