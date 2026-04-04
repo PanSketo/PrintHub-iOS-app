@@ -77,6 +77,10 @@ db.exec(`
   );
 `);
 
+// ── Schema migrations ─────────────────────────────────────────────────────────
+// Safe to run every startup; ALTER TABLE throws if column already exists, which we ignore.
+try { db.exec(`ALTER TABLE printer_events ADD COLUMN print_name TEXT`); } catch (_) {}
+
 // ── State tracking ────────────────────────────────────────────────────────────
 let lastPrintState = null;
 let currentPrintName = '';

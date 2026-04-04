@@ -270,7 +270,7 @@ struct PrinterStatusView: View {
     // MARK: - Polling
     func startPolling() {
         pollingTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { _ in
-            Task { await fetchState() }
+            Task { @MainActor in await fetchState() }
         }
     }
 
@@ -280,44 +280,38 @@ struct PrinterStatusView: View {
     }
 
     func refresh() {
-        Task {
+        Task { @MainActor in
             await fetchState()
             await fetchMappings()
         }
     }
 
+    @MainActor
     func fetchState() async {
-        // Prevent overlapping concurrent fetches from the timer + manual refresh
         guard !isFetching else { return }
-        await MainActor.run { isFetching = true }
-        defer { Task { @MainActor in isFetching = false } }
+        isFetching = true
+        defer { isFetching = false }
 
         do {
             let state = try await nasService.fetchPrinterState(using: printerConfig)
-            await MainActor.run {
-                self.error = nil
-                self.printerState = state
-                self.isLoading = false
-            }
+            self.error = nil
+            self.printerState = state
+            self.isLoading = false
         } catch {
-            await MainActor.run {
-                // Keep any previously loaded state — just mark as disconnected
-                if self.printerState == nil {
-                    // First load failed — show empty state with setup instructions
-                    self.printerState = PrinterState(connected: false, live: nil)
-                }
-                self.error = error.localizedDescription
-                self.isLoading = false
+            if self.printerState == nil {
+                self.printerState = PrinterState(connected: false, live: nil)
             }
+            self.error = error.localizedDescription
+            self.isLoading = false
         }
-        // Check for new print events on every poll tick (NASService rate-limits to 20 s)
         await nasService.checkPrintEvents(using: printerConfig)
     }
 
+    @MainActor
     func fetchMappings() async {
         do {
             let mappings = try await nasService.fetchAMSMappings(using: printerConfig)
-            await MainActor.run { self.amsMappings = mappings }
+            self.amsMappings = mappings
         } catch { }
     }
 
