@@ -380,10 +380,21 @@ struct PrintProgressCard: View {
             }
             .frame(height: 16)
 
-            // Stats row — speed badge is tappable
+            // Time info row: elapsed | finish time | remaining
+            if state.remainingMinutes > 0 {
+                HStack {
+                    if state.progress > 1 {
+                        statBadge(icon: "timer", value: elapsedText, label: "elapsed")
+                        Spacer()
+                    }
+                    statBadge(icon: "flag.checkered", value: finishText, label: "finishes at")
+                    Spacer()
+                    statBadge(icon: "clock", value: formatMinutes(state.remainingMinutes), label: "remaining")
+                }
+            }
+
+            // Layers + speed row
             HStack {
-                statBadge(icon: "clock", value: formatMinutes(state.remainingMinutes), label: "remaining")
-                Spacer()
                 statBadge(icon: "square.3.layers.3d", value: "\(state.layerCurrent)/\(state.layerTotal)", label: "layers")
                 Spacer()
                 Button { showSpeedPicker = true } label: {
@@ -451,6 +462,20 @@ struct PrintProgressCard: View {
         }
         .padding()
         .glassCard()
+    }
+
+    var elapsedText: String {
+        guard state.progress > 1 else { return "—" }
+        let total = Double(state.remainingMinutes) / (1.0 - Double(state.progress) / 100.0)
+        let elapsed = Int(total) - state.remainingMinutes
+        return formatMinutes(max(0, elapsed))
+    }
+
+    var finishText: String {
+        let finish = Date().addingTimeInterval(TimeInterval(state.remainingMinutes * 60))
+        let fmt = DateFormatter()
+        fmt.dateFormat = "h:mma"
+        return fmt.string(from: finish).lowercased()
     }
 
     func statBadge(icon: String, value: String, label: String) -> some View {
