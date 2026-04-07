@@ -1,5 +1,17 @@
 import SwiftUI
 
+// MARK: - Per-filament entry
+
+private struct FilamentEntry: Identifiable {
+    let id = UUID()
+    var filamentId: String = ""
+    var weightText: String = ""
+    var weightG: Double? { Double(weightText) }
+    var isValid: Bool { !filamentId.isEmpty && (weightG ?? 0) > 0 }
+}
+
+// MARK: - Sheet
+
 struct ManualPrintLogSheet: View {
     @EnvironmentObject var store: InventoryStore
     @Environment(\.dismiss) private var dismiss
@@ -7,8 +19,7 @@ struct ManualPrintLogSheet: View {
     let untracked: NASService.UntrackedPrint
 
     @State private var printName: String
-    @State private var selectedFilamentId: String = ""
-    @State private var weightText: String = ""
+    @State private var entries: [FilamentEntry] = [FilamentEntry()]
     @State private var success: Bool = true
     @State private var isSaving = false
 
@@ -17,11 +28,9 @@ struct ManualPrintLogSheet: View {
         _printName = State(initialValue: untracked.printName)
     }
 
-    var selectedFilament: Filament? {
-        store.filaments.first { $0.id == selectedFilamentId }
+    var sortedFilaments: [Filament] {
+        store.filaments.sorted { "\($0.brand) \($0.color.name)" < "\($1.brand) \($1.color.name)" }
     }
-
-    var weightG: Double? { Double(weightText) }
 
     var durationText: String? {
         guard let s = untracked.durationSeconds, s > 0 else { return nil }
@@ -30,44 +39,68 @@ struct ManualPrintLogSheet: View {
         return h > 0 ? "\(h)h \(m)m" : "\(m)m"
     }
 
+    var validEntries: [(filamentId: String, weightG: Double)] {
+        entries.compactMap { e in
+            guard e.isValid, let g = e.weightG else { return nil }
+            return (e.filamentId, g)
+        }
+    }
+
+    var canSave: Bool { !validEntries.isEmpty && !isSaving }
+
     var body: some View {
         NavigationStack {
             Form {
+                // Print info
                 Section("Print") {
                     HStack {
-                        Text("Name")
-                            .foregroundColor(.secondary)
+                        Text("Name").foregroundColor(.secondary)
                         Spacer()
-                        Text(printName)
-                            .multilineTextAlignment(.trailing)
+                        Text(printName).multilineTextAlignment(.trailing)
                     }
                     if let dur = durationText {
                         HStack {
-                            Text("Duration")
-                                .foregroundColor(.secondary)
+                            Text("Duration").foregroundColor(.secondary)
                             Spacer()
                             Text(dur)
                         }
                     }
                 }
 
-                Section("Filament Used") {
-                    Picker("Filament", selection: $selectedFilamentId) {
-                        Text("— Select —").tag("")
-                        ForEach(store.filaments.sorted { "\($0.brand) \($0.color.name)" < "\($1.brand) \($1.color.name)" }) { f in
-                            Text("\(f.brand) \(f.type.rawValue) \(f.color.name)")
-                                .tag(f.id)
-                        }
-                    }
-                    .pickerStyle(.navigationLink)
-                }
+                // Filament entries
+                Section {
+                    ForEach($entries) { $entry in
+                        VStack(spacing: 10) {
+                            Picker("Filament", selection: $entry.filamentId) {
+                                Text("— Select filament —").tag("")
+                                ForEach(sortedFilaments) { f in
+                                    Text("\(f.brand) \(f.type.rawValue) \(f.color.name)").tag(f.id)
+                                }
+                            }
+                            .pickerStyle(.navigationLink)
 
-                Section("Weight Used") {
-                    HStack {
-                        TextField("e.g. 145", text: $weightText)
-                            .keyboardType(.decimalPad)
-                        Text("g")
-                            .foregroundColor(.secondary)
+                            HStack {
+                                TextField("Weight used", text: $entry.weightText)
+                                    .keyboardType(.decimalPad)
+                                Text("g").foregroundColor(.secondary)
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    }
+                    .onDelete { entries.remove(atOffsets: $0) }
+
+                    Button {
+                        entries.append(FilamentEntry())
+                    } label: {
+                        Label("Add Filament", systemImage: "plus.circle.fill")
+                            .foregroundColor(.orange)
+                    }
+                } header: {
+                    Text("Filaments Used")
+                } footer: {
+                    if entries.count > 1 {
+                        Text("Swipe left on an entry to remove it.")
+                            .font(.caption)
                     }
                 }
 
@@ -83,7 +116,7 @@ struct ManualPrintLogSheet: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") { save() }
-                        .disabled(selectedFilamentId.isEmpty || weightG == nil || weightG! <= 0 || isSaving)
+                        .disabled(!canSave)
                         .fontWeight(.semibold)
                 }
             }
@@ -91,13 +124,12 @@ struct ManualPrintLogSheet: View {
     }
 
     private func save() {
-        guard let grams = weightG, grams > 0, !selectedFilamentId.isEmpty else { return }
+        guard canSave else { return }
         isSaving = true
         store.logUntrackedPrint(
             eventId: untracked.id,
-            filamentId: selectedFilamentId,
+            entries: validEntries,
             printName: printName,
-            weightG: grams,
             durationSeconds: untracked.durationSeconds,
             success: success
         )

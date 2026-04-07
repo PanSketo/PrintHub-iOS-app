@@ -267,18 +267,25 @@ class InventoryStore: ObservableObject {
         }
     }
 
-    func logUntrackedPrint(eventId: String, filamentId: String, printName: String, weightG: Double, durationSeconds: Double?, success: Bool) {
-        let job = PrintJob(
-            id: UUID().uuidString,
-            filamentId: filamentId,
-            printName: printName,
-            weightUsedG: weightG,
-            duration: durationSeconds,
-            date: Date(),
-            notes: "Manually logged",
-            success: success
-        )
-        logPrintJob(job)
+    func logUntrackedPrint(eventId: String,
+                           entries: [(filamentId: String, weightG: Double)],
+                           printName: String,
+                           durationSeconds: Double?,
+                           success: Bool) {
+        let note = entries.count > 1 ? "Manually logged (multi-filament)" : "Manually logged"
+        for (index, entry) in entries.enumerated() {
+            let job = PrintJob(
+                id: UUID().uuidString,
+                filamentId: entry.filamentId,
+                printName: printName,
+                weightUsedG: entry.weightG,
+                duration: index == 0 ? durationSeconds : nil,
+                date: Date(),
+                notes: note,
+                success: success
+            )
+            logPrintJob(job)
+        }
         Task {
             try? await nas.clearUntrackedPrint(id: eventId)
             await MainActor.run {
