@@ -6,7 +6,7 @@ private struct FilamentSlot: Identifiable {
     var filamentID: String? = nil
     var gramsText: String = ""
 
-    var grams: Double { Double(gramsText) ?? 0 }
+    var grams: Double { Double(gramsText.replacingOccurrences(of: ",", with: ".")) ?? 0 }
 }
 
 // MARK: - Print Cost Calculator View
@@ -194,43 +194,43 @@ struct PrintCostCalculatorView: View {
                 label: "Electricity Rate", unit: "€/kWh",
                 info: "Your energy rate per kWh. Current: 0.11 €/kWh.",
                 text: $electricityRateText
-            ) { if let v = Double(electricityRateText) { electricityRate = v } }
+            ) { if let v = parseDouble(electricityRateText) { electricityRate = v } }
 
             SettingRow(
                 label: "Printer Power", unit: "W",
                 info: "Average draw while printing. Your P2S averages ~190 W.",
                 text: $printerWattsText
-            ) { if let v = Double(printerWattsText) { printerWatts = v } }
+            ) { if let v = parseDouble(printerWattsText) { printerWatts = v } }
 
             SettingRow(
                 label: "Printer Value", unit: "€",
                 info: "Purchase price used for depreciation. Your printer: €820.47.",
                 text: $printerValueText
-            ) { if let v = Double(printerValueText) { printerValue = v } }
+            ) { if let v = parseDouble(printerValueText) { printerValue = v } }
 
             SettingRow(
                 label: "Printer Lifetime", unit: "h",
                 info: "Expected total print hours before replacement/overhaul.",
                 text: $printerLifetimeText
-            ) { if let v = Double(printerLifetimeText) { printerLifetimeH = v } }
+            ) { if let v = parseDouble(printerLifetimeText) { printerLifetimeH = v } }
 
             SettingRow(
                 label: "Waste / Failure Rate", unit: "%",
                 info: "Filament wasted on failed prints. Your estimate: 2%.",
                 text: $failureRateText
-            ) { if let v = Double(failureRateText) { failureRate = max(0, v) } }
+            ) { if let v = parseDouble(failureRateText) { failureRate = max(0, v) } }
 
             SettingRow(
                 label: "Consumables", unit: "€/h",
                 info: "Nozzles, build plates, maintenance per hour. Calculated from your ~€10/mo ÷ 80 h/mo = 0.125 €/h.",
                 text: $consumablesPHText
-            ) { if let v = Double(consumablesPHText) { consumablesPH = max(0, v) } }
+            ) { if let v = parseDouble(consumablesPHText) { consumablesPH = max(0, v) } }
 
             SettingRow(
                 label: "Profit Margin", unit: "%",
                 info: "True margin (% of selling price). At 18%: selling price = cost ÷ 0.82.",
                 text: $profitMarginText
-            ) { if let v = Double(profitMarginText) { profitMargin = min(max(0, v), 99) } }
+            ) { if let v = parseDouble(profitMarginText) { profitMargin = min(max(0, v), 99) } }
         } header: {
             Text("Business Settings")
         } footer: {
@@ -246,31 +246,31 @@ struct PrintCostCalculatorView: View {
                 label: "Rent", unit: "€/mo",
                 info: "Monthly rent or workspace cost.",
                 text: $rentText
-            ) { if let v = Double(rentText) { rent = max(0, v) } }
+            ) { if let v = parseDouble(rentText) { rent = max(0, v) } }
 
             SettingRow(
                 label: "Internet", unit: "€/mo",
                 info: "Monthly internet/connectivity cost.",
                 text: $internetText
-            ) { if let v = Double(internetText) { internet = max(0, v) } }
+            ) { if let v = parseDouble(internetText) { internet = max(0, v) } }
 
             SettingRow(
                 label: "Accounting", unit: "€/mo",
                 info: "Monthly accountant or bookkeeping cost.",
                 text: $accountingText
-            ) { if let v = Double(accountingText) { accounting = max(0, v) } }
+            ) { if let v = parseDouble(accountingText) { accounting = max(0, v) } }
 
             SettingRow(
                 label: "Misc", unit: "€/mo",
                 info: "Any other monthly business expense.",
                 text: $miscText
-            ) { if let v = Double(miscText) { misc = max(0, v) } }
+            ) { if let v = parseDouble(miscText) { misc = max(0, v) } }
 
             SettingRow(
                 label: "Monthly Print Hours", unit: "h/mo",
                 info: "How many hours per month the printer runs. Used to split fixed costs across prints.",
                 text: $monthlyHoursText
-            ) { if let v = Double(monthlyHoursText), v > 0 { monthlyHours = v } }
+            ) { if let v = parseDouble(monthlyHoursText), v > 0 { monthlyHours = v } }
         } header: {
             Text("Monthly Overhead")
         } footer: {
@@ -359,6 +359,11 @@ struct PrintCostCalculatorView: View {
         internetText        = fmt(internet)
         accountingText      = fmt(accounting)
         miscText            = fmt(misc)
+    }
+
+    /// Accepts both "0.11" and "0,11" — handles European keyboard input.
+    private func parseDouble(_ text: String) -> Double? {
+        Double(text.replacingOccurrences(of: ",", with: "."))
     }
 
     private func resetCalculation() {
