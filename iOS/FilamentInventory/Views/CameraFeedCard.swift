@@ -155,6 +155,7 @@ struct CameraFeedCard: View {
     @State private var lightOn: Bool = false
     @State private var lightKnown: Bool = false
     @State private var lightBusy: Bool = false
+    @State private var showFullscreen = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -173,6 +174,10 @@ struct CameraFeedCard: View {
                 streamer.start(baseURL: nasService.baseURL, apiKey: nasService.apiKey)
             }
             if connected { Task { await refreshLightState() } }
+        }
+        .fullScreenCover(isPresented: $showFullscreen) {
+            CameraFullscreenView()
+                .environmentObject(nasService)
         }
     }
 
@@ -222,7 +227,7 @@ struct CameraFeedCard: View {
     }
 
     private var feedArea: some View {
-        ZStack {
+        ZStack(alignment: .topTrailing) {
             Color.black
                 .aspectRatio(16 / 9, contentMode: .fit)
                 .clipShape(RoundedRectangle(cornerRadius: 12))
@@ -263,6 +268,17 @@ struct CameraFeedCard: View {
                         .foregroundColor(.white.opacity(0.4))
                 }
             }
+
+            // Fullscreen expand button
+            Button { showFullscreen = true } label: {
+                Image(systemName: "arrow.up.left.and.arrow.down.right")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.white)
+                    .padding(7)
+                    .background(.black.opacity(0.5))
+                    .clipShape(Circle())
+            }
+            .padding(10)
         }
         .padding(.horizontal)
     }
@@ -310,5 +326,88 @@ struct CameraFeedCard: View {
             .disabled(lightBusy || !nasService.isConnected)
         }
         .padding()
+    }
+}
+
+// MARK: - Fullscreen Camera View
+
+struct CameraFullscreenView: View {
+    @EnvironmentObject var nasService: NASService
+    @StateObject private var streamer = MJPEGStreamer()
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+
+            if let frame = streamer.currentFrame {
+                Image(uiImage: frame)
+                    .resizable()
+                    .scaledToFit()
+                    .ignoresSafeArea()
+            } else if streamer.isStreaming {
+                VStack(spacing: 8) {
+                    ProgressView().tint(.white)
+                    Text("Connecting…")
+                        .font(.caption)
+                        .foregroundColor(.white.opacity(0.7))
+                }
+            } else if let error = streamer.errorMessage {
+                VStack(spacing: 10) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 36))
+                        .foregroundColor(.orange)
+                    Text(error)
+                        .font(.caption)
+                        .foregroundColor(.white.opacity(0.8))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 40)
+                }
+            }
+
+            // HUD overlay: live badge (top-left) + close button (top-right)
+            VStack {
+                HStack(alignment: .top) {
+                    if streamer.isStreaming {
+                        HStack(spacing: 5) {
+                            Circle().fill(.red).frame(width: 8, height: 8)
+                            Text("LIVE")
+                                .font(.caption.weight(.bold))
+                                .foregroundColor(.red)
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(.black.opacity(0.45))
+                        .clipShape(Capsule())
+                    }
+                    Spacer()
+                    Button { dismiss() } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.title2)
+                            .foregroundStyle(.white, .black.opacity(0.5))
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
+                Spacer()
+            }
+        }
+        .onAppear {
+            streamer.start(baseURL: nasService.baseURL, apiKey: nasService.apiKey)
+            requestOrientation(.landscapeRight)
+        }
+        .onDisappear {
+            streamer.stop()
+            requestOrientation(.portrait)
+        }
+    }
+
+    private func requestOrientation(_ mask: UIInterfaceOrientationMask) {
+        guard let scene = UIApplication.shared.connectedScenes
+            .compactMap({ $0 as? UIWindowScene }).first
+        else { return }
+        scene.requestGeometryUpdate(
+            .iOS(interfaceOrientations: mask)
+        ) { _ in }
     }
 }
