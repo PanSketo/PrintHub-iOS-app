@@ -84,7 +84,6 @@ console.log('✅ Database tables ready');
 
 // Middleware
 app.use(express.json({ limit: '10mb' }));
-app.use((req, res, next) => { console.log(`→ ${req.method} ${req.path}`); next(); });
 
 // Auth middleware — accepts X-API-Key header OR ?key= query param
 // (?key= is required for AVPlayer and AsyncImage which cannot set custom headers)
@@ -853,7 +852,7 @@ app.delete('/api/printer/timelapse', authenticate, async (req, res) => {
     return res.status(503).json({ error: 'Printer not configured' });
   }
   const client = new ftp.Client();
-  client.ftp.verbose = true;   // log FTP commands to see what the printer rejects
+  client.ftp.verbose = false;
   try {
     await client.access({
       host: PRINTER_IP, port: 990,
