@@ -15,12 +15,12 @@ services:
       - "3456:3456"
     environment:
       - PORT=3456
-      - API_KEY=34jgkJkgosidksofj0948jdPNT
+      - API_KEY=${API_KEY}
       - DB_PATH=/app/data/filaments.db
-      - PRINTER_IP=192.168.1.20
-      - PRINTER_SERIAL=22E8BJ610904083
-      - PRINTER_ACCESS_CODE=5726da27
-      - BASE_URL=http://pansketo.arcdns.tech:3456
+      - PRINTER_IP=${PRINTER_IP}
+      - PRINTER_SERIAL=${PRINTER_SERIAL}
+      - PRINTER_ACCESS_CODE=${PRINTER_ACCESS_CODE}
+      - BASE_URL=${BASE_URL}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:3456/health"]
@@ -40,11 +40,11 @@ services:
       - bridge_modules:/app/mqtt-bridge/node_modules
     command: sh -c "npm install --prefer-offline 2>/dev/null || npm install && node bridge.js"
     environment:
-      - PRINTER_IP=192.168.1.20
-      - PRINTER_SERIAL=22E8BJ610904083
-      - PRINTER_ACCESS_CODE=5726da27
+      - PRINTER_IP=${PRINTER_IP}
+      - PRINTER_SERIAL=${PRINTER_SERIAL}
+      - PRINTER_ACCESS_CODE=${PRINTER_ACCESS_CODE}
       - DB_PATH=/app/data/filaments.db
-      - API_KEY=34jgkJkgosidksofj0948jdPNT
+      - API_KEY=${API_KEY}
     restart: unless-stopped
     depends_on:
       - filament-backend
