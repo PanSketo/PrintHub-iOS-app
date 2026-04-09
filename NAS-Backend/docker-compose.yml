@@ -15,12 +15,12 @@ services:
       - "3456:3456"
     environment:
       - PORT=3456
-      - API_KEY=REDACTED-API-KEY
+      - API_KEY=${API_KEY}
       - DB_PATH=/app/data/filaments.db
-      - PRINTER_IP=REDACTED-PRINTER-IP
-      - PRINTER_SERIAL=REDACTED-SERIAL
-      - PRINTER_ACCESS_CODE=REDACTED-ACCESS-CODE
-      - BASE_URL=http://REDACTED-DDNS:3456
+      - PRINTER_IP=${PRINTER_IP}
+      - PRINTER_SERIAL=${PRINTER_SERIAL}
+      - PRINTER_ACCESS_CODE=${PRINTER_ACCESS_CODE}
+      - BASE_URL=${BASE_URL}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:3456/health"]
@@ -40,11 +40,11 @@ services:
       - bridge_modules:/app/mqtt-bridge/node_modules
     command: sh -c "npm install --prefer-offline 2>/dev/null || npm install && node bridge.js"
     environment:
-      - PRINTER_IP=REDACTED-PRINTER-IP
-      - PRINTER_SERIAL=REDACTED-SERIAL
-      - PRINTER_ACCESS_CODE=REDACTED-ACCESS-CODE
+      - PRINTER_IP=${PRINTER_IP}
+      - PRINTER_SERIAL=${PRINTER_SERIAL}
+      - PRINTER_ACCESS_CODE=${PRINTER_ACCESS_CODE}
       - DB_PATH=/app/data/filaments.db
-      - API_KEY=REDACTED-API-KEY
+      - API_KEY=${API_KEY}
     restart: unless-stopped
     depends_on:
       - filament-backend
