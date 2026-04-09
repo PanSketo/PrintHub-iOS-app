@@ -84,6 +84,7 @@ console.log('✅ Database tables ready');
 
 // Middleware
 app.use(express.json({ limit: '10mb' }));
+app.use((req, res, next) => { console.log(`→ ${req.method} ${req.path}`); next(); });
 
 // Auth middleware — accepts X-API-Key header OR ?key= query param
 // (?key= is required for AVPlayer and AsyncImage which cannot set custom headers)
