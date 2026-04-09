@@ -282,6 +282,20 @@ app.post('/api/printjobs', (req, res) => {
   }
 });
 
+// PUT /api/printjobs/:id — update an existing job (used to back-fill costEUR)
+app.put('/api/printjobs/:id', authenticate, (req, res) => {
+  try {
+    const existing = db.prepare('SELECT data FROM print_jobs WHERE id = ?').get(req.params.id);
+    if (!existing) return res.status(404).json({ error: 'Not found' });
+    const job = { ...JSON.parse(existing.data), ...req.body, id: req.params.id };
+    db.prepare('UPDATE print_jobs SET data = ?, filament_id = ? WHERE id = ?')
+      .run(JSON.stringify(job), job.filamentId, req.params.id);
+    res.json(job);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── Stats ─────────────────────────────────────────────────────────────────────
 app.get('/api/stats', (req, res) => {
   try {

@@ -56,6 +56,8 @@ class InventoryStore: ObservableObject {
                     self.saveToLocalCache()
                 }
                 refreshUntrackedPrints()
+                // Back-fill costEUR for auto-logged jobs that are missing it
+                await backfillJobCosts(jobs: fetchedJobs, filaments: fetchedFilaments)
                 // Back-fill missing images silently in background
                 await backfillMissingImages(fetchedFilaments)
             } catch {
@@ -85,6 +87,38 @@ class InventoryStore: ObservableObject {
 
     // Fetch and permanently save imageURL for any filament that is missing one,
     // and mirror any remote image URLs to the NAS for local caching.
+    private func backfillJobCosts(jobs: [PrintJob], filaments: [Filament]) async {
+        let jobsNeedingCost = jobs.filter { $0.costEUR == nil }
+        guard !jobsNeedingCost.isEmpty else { return }
+
+        let filamentMap = Dictionary(uniqueKeysWithValues: filaments.map { ($0.id, $0) })
+        var updated: [PrintJob] = []
+
+        for job in jobsNeedingCost {
+            guard let filament = filamentMap[job.filamentId],
+                  filament.totalWeightG > 0, filament.pricePaid > 0 else { continue }
+            var patched = job
+            patched.costEUR = (filament.pricePaid / filament.totalWeightG) * job.weightUsedG
+            updated.append(patched)
+        }
+
+        guard !updated.isEmpty else { return }
+
+        // Update local state
+        await MainActor.run {
+            for job in updated {
+                if let idx = self.printJobs.firstIndex(where: { $0.id == job.id }) {
+                    self.printJobs[idx] = job
+                }
+            }
+        }
+
+        // Persist to server in background (best-effort)
+        for job in updated {
+            try? await nas.updatePrintJob(job)
+        }
+    }
+
     private func backfillMissingImages(_ filaments: [Filament]) async {
         let nasBase = nas.baseURL
         var anyChange = false

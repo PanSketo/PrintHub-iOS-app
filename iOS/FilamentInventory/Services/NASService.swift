@@ -195,6 +195,21 @@ class NASService: ObservableObject {
         }
     }
 
+    func updatePrintJob(_ job: PrintJob) async throws {
+        guard let url = URL(string: "\(baseURL)/api/printjobs/\(job.id)") else {
+            throw NASError.invalidURL
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "PUT"
+        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.addValue(apiKey, forHTTPHeaderField: "X-API-Key")
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        request.httpBody = try encoder.encode(job)
+        let (_, response) = try await session.data(for: request)
+        guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw NASError.serverError }
+    }
+
     // MARK: - Fetch Print Jobs
     func fetchPrintJobs() async throws -> [PrintJob] {
         guard let url = URL(string: "\(baseURL)/api/printjobs") else {
