@@ -20,25 +20,36 @@ struct PrintLogView: View {
     }
 
     // 1.75 mm filament, avg density 1.24 g/cm³  →  ~2.98 g per metre
+    // Thousands separator: "."  |  Decimal separator: ","
     var totalLengthText: String {
         let meters = totalWeightUsed / 2.98
         if meters >= 1000 {
             let km    = meters / 1000
             let whole = Int(km)
             let frac  = Int((km - Double(whole)) * 100)
-            return "\(whole).\(String(format: "%02d", frac))km"
+            return "\(whole),\(String(format: "%02d", frac))km"
         } else {
             return "\(Int(meters.rounded()))m"
         }
     }
 
-    // Formats grams with "." as the thousands separator (e.g. 4588 → "4.588g")
+    // Formats grams with "." as thousands separator (e.g. 4588 → "4.588g")
     var formattedWeight: String {
         let n = Int(totalWeightUsed)
         if n >= 1000 {
             return "\(n / 1000).\(String(format: "%03d", n % 1000))g"
         }
         return "\(n)g"
+    }
+
+    // Formats euro cost with "," as decimal separator (e.g. 98.39 → "€98,39")
+    var formattedCost: String {
+        let euros = Int(totalPrintCost)
+        let cents = Int((totalPrintCost * 100).rounded()) % 100
+        if euros >= 1000 {
+            return "€\(euros / 1000).\(String(format: "%03d", euros % 1000)),\(String(format: "%02d", cents))"
+        }
+        return "€\(euros),\(String(format: "%02d", cents))"
     }
 
     var body: some View {
@@ -83,7 +94,7 @@ struct PrintLogView: View {
                             Divider().frame(height: 40)
                             Spacer()
                             VStack(alignment: .trailing) {
-                                Text(String(format: "€%.2f", totalPrintCost))
+                                Text(formattedCost)
                                     .font(.system(.title2, design: .rounded))
                                     .fontWeight(.black)
                                     .foregroundColor(.blue)
