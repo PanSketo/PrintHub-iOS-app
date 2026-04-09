@@ -601,8 +601,12 @@ class NASService: ObservableObject {
         var request = URLRequest(url: url)
         request.httpMethod = "DELETE"
         request.addValue(key, forHTTPHeaderField: "X-API-Key")
-        let (_, response) = try await session.data(for: request)
-        guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw NASError.serverError }
+        let (data, response) = try await session.data(for: request)
+        guard (response as? HTTPURLResponse)?.statusCode == 200 else {
+            // Surface the actual FTP error message from the server
+            let msg = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["error"] as? String
+            throw NASError.custom(msg ?? "Server error")
+        }
     }
 }
 
@@ -668,6 +672,7 @@ enum NASError: LocalizedError {
     case decodingError
     case unauthorized
     case notFound
+    case custom(String)
 
     var errorDescription: String? {
         switch self {
@@ -677,6 +682,7 @@ enum NASError: LocalizedError {
         case .decodingError: return "Failed to decode response"
         case .unauthorized:  return "API key incorrect — update Settings"
         case .notFound:      return "No backup found on NAS"
+        case .custom(let msg): return msg
         }
     }
 }

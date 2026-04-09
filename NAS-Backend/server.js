@@ -850,7 +850,7 @@ app.delete('/api/printer/timelapse', authenticate, async (req, res) => {
     return res.status(503).json({ error: 'Printer not configured' });
   }
   const client = new ftp.Client();
-  client.ftp.verbose = false;
+  client.ftp.verbose = true;   // log FTP commands to see what the printer rejects
   try {
     await client.access({
       host: PRINTER_IP, port: 990,
@@ -861,6 +861,7 @@ app.delete('/api/printer/timelapse', authenticate, async (req, res) => {
     client.close();
     res.json({ ok: true });
   } catch (err) {
+    console.error('[timelapse/delete] Error:', err.message);
     try { client.close(); } catch (_) {}
     res.status(500).json({ error: err.message });
   }
