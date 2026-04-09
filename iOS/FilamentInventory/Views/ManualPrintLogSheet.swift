@@ -6,7 +6,7 @@ private struct FilamentEntry: Identifiable {
     let id = UUID()
     var filamentId: String = ""
     var weightText: String = ""
-    var weightG: Double? { Double(weightText) }
+    var weightG: Double? { Double(weightText.replacingOccurrences(of: ",", with: ".")) }
     var isValid: Bool { !filamentId.isEmpty && (weightG ?? 0) > 0 }
 }
 
@@ -74,10 +74,15 @@ struct ManualPrintLogSheet: View {
                             Picker("Filament", selection: $entry.filamentId) {
                                 Text("— Select filament —").tag("")
                                 ForEach(sortedFilaments) { f in
-                                    Text("\(f.brand) \(f.type.rawValue) \(f.color.name)").tag(f.id)
+                                    Label {
+                                        Text("\(f.brand) \(f.type.rawValue) — \(f.color.name)")
+                                    } icon: {
+                                        Circle().fill(f.color.color).frame(width: 12, height: 12)
+                                    }
+                                    .tag(f.id)
                                 }
                             }
-                            .pickerStyle(.navigationLink)
+                            .pickerStyle(.menu)
 
                             HStack {
                                 TextField("Weight used", text: $entry.weightText)

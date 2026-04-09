@@ -8,11 +8,31 @@ struct LogPrintView: View {
 
     @State private var printName = ""
     @State private var weightUsed: Double = 50
-    @State private var hours: Double = 0
-    @State private var minutes: Double = 0
+    @State private var durationText: String = ""
     @State private var notes = ""
     @State private var success = true
     @State private var printDate = Date()
+
+    private struct ParsedDuration {
+        let seconds: TimeInterval
+        let label: String
+    }
+
+    private var parsedDuration: ParsedDuration? {
+        let text = durationText.trimmingCharacters(in: .whitespaces)
+        guard !text.isEmpty else { return nil }
+        let parts = text.split(separator: ":").map { Int($0) }
+        if parts.count == 2, let h = parts[0], let m = parts[1], h >= 0, m >= 0, m < 60 {
+            let label = h > 0 ? "\(h)h \(m)m" : "\(m)m"
+            return ParsedDuration(seconds: TimeInterval(h * 3600 + m * 60), label: label)
+        }
+        if parts.count == 1, let m = parts[0], m >= 0 {
+            let h = m / 60; let mins = m % 60
+            let label = h > 0 ? "\(h)h \(mins)m" : "\(m)m"
+            return ParsedDuration(seconds: TimeInterval(m * 60), label: label)
+        }
+        return nil
+    }
 
     var body: some View {
         NavigationStack {
@@ -78,22 +98,21 @@ struct LogPrintView: View {
                 }
 
                 Section {
-                    VStack(alignment: .leading) {
-                        HStack {
-                            Text("Hours")
-                            Spacer()
-                            Text("\(Int(hours))h")
+                    HStack {
+                        Image(systemName: "clock").foregroundColor(.secondary)
+                        TextField("e.g. 2:30", text: $durationText)
+                            .keyboardType(.numbersAndPunctuation)
+                        if let parsed = parsedDuration {
+                            Text(parsed.label)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
                         }
-                        Slider(value: $hours, in: 0...72, step: 1)
-                        HStack {
-                            Text("Minutes")
-                            Spacer()
-                            Text("\(Int(minutes))m")
-                        }
-                        Slider(value: $minutes, in: 0...59, step: 5)
                     }
                 } header: {
                     Text("Print Duration (Optional)")
+                } footer: {
+                    Text("Format: H:MM — e.g. 1:30 for 1 hour 30 min")
+                        .font(.caption2)
                 }
 
                 Section {
@@ -114,12 +133,12 @@ struct LogPrintView: View {
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Save") {
-                        let duration = (hours * 3600) + (minutes * 60)
+                        let duration = parsedDuration?.seconds
                         let job = PrintJob(
                             filamentId: filament.id,
                             printName: printName.isEmpty ? "Untitled Print" : printName,
                             weightUsedG: weightUsed,
-                            duration: duration > 0 ? duration : nil,
+                            duration: duration,
                             date: printDate,
                             notes: notes,
                             success: success
