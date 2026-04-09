@@ -157,12 +157,11 @@ struct PrintFilesView: View {
                         thumbnailURL: file.isDirectory ? nil : nasService.thumbnailURL(forFile: file.path, using: printerConfig),
                         isPrinting: printingPath == file.path,
                         isSelecting: isSelecting,
-                        isSelected: selected.contains(file.path)
-                    ) {
-                        handleTap(file)
-                    } onLongPress: {
-                        handleLongPress(file)
-                    }
+                        isSelected: selected.contains(file.path),
+                        onTap: { handleTap(file) },
+                        onSelect: { handleSelect(file) },
+                        onDelete: { handleDeleteSingle(file) }
+                    )
                 }
             }
             .padding(.horizontal, 16)
@@ -192,12 +191,16 @@ struct PrintFilesView: View {
         }
     }
 
-    func handleLongPress(_ file: PrinterFile) {
-        if file.isDirectory { return }
-        if !isSelecting {
-            isSelecting = true
-            selected = [file.path]
-        }
+    func handleSelect(_ file: PrinterFile) {
+        guard !file.isDirectory else { return }
+        isSelecting = true
+        selected.insert(file.path)
+    }
+
+    func handleDeleteSingle(_ file: PrinterFile) {
+        guard !file.isDirectory else { return }
+        selected = [file.path]
+        showDeleteConfirm = true
     }
 
     func exitSelection() {
@@ -210,8 +213,9 @@ struct PrintFilesView: View {
     func deleteSelected() async {
         guard !selected.isEmpty else { return }
         isDeleting = true
+        let toDelete = selected
         var failed = 0
-        for path in selected {
+        for path in toDelete {
             do {
                 try await nasService.deletePrinterFile(path: path, using: printerConfig)
             } catch {
@@ -219,13 +223,12 @@ struct PrintFilesView: View {
             }
         }
         await MainActor.run {
-            let removed = selected.count - failed
-            files.removeAll { selected.contains($0.path) }
+            files.removeAll { toDelete.contains($0.path) }
             exitSelection()
             isDeleting = false
         }
         if failed == 0 {
-            await showToast("🗑️ Deleted \(selected.count > 1 ? "\(selected.count) files" : "file")")
+            await showToast("🗑️ Deleted \(toDelete.count > 1 ? "\(toDelete.count) files" : "file")")
         } else {
             await showToast("⚠️ \(failed) file\(failed == 1 ? "" : "s") failed to delete")
         }
@@ -311,7 +314,8 @@ struct PrintFileTile: View {
     let isSelecting: Bool
     let isSelected: Bool
     let onTap: () -> Void
-    let onLongPress: () -> Void
+    let onSelect: () -> Void
+    let onDelete: () -> Void
 
     var body: some View {
         VStack(spacing: 0) {
@@ -389,7 +393,16 @@ struct PrintFileTile: View {
         .shadow(color: .black.opacity(0.08), radius: 4, x: 0, y: 2)
         .contentShape(Rectangle())
         .onTapGesture { onTap() }
-        .onLongPressGesture(minimumDuration: 0.5) { onLongPress() }
+        .contextMenu {
+            if !file.isDirectory && !isSelecting {
+                Button { onSelect() } label: {
+                    Label("Select", systemImage: "checkmark.circle")
+                }
+                Button(role: .destructive) { onDelete() } label: {
+                    Label("Delete", systemImage: "trash")
+                }
+            }
+        }
     }
 
     var fallbackIcon: some View {
