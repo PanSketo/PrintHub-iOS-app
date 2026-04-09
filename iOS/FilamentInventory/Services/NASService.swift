@@ -541,6 +541,22 @@ class NASService: ObservableObject {
         guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw NASError.serverError }
     }
 
+    func deletePrinterFile(path: String, using config: PrinterConfig? = nil) async throws {
+        let base = config?.nasURL ?? baseURL
+        let key  = config?.apiKey ?? apiKey
+        guard var components = URLComponents(string: "\(base)/api/printer/files") else { throw NASError.invalidURL }
+        components.queryItems = [URLQueryItem(name: "path", value: path)]
+        guard let url = components.url else { throw NASError.invalidURL }
+        var request = URLRequest(url: url)
+        request.httpMethod = "DELETE"
+        request.addValue(key, forHTTPHeaderField: "X-API-Key")
+        let (data, response) = try await session.data(for: request)
+        guard (response as? HTTPURLResponse)?.statusCode == 200 else {
+            let msg = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["error"] as? String
+            throw NASError.custom(msg ?? "Failed to delete file")
+        }
+    }
+
     // MARK: - Timelapse
 
     /// Lists .mp4 timelapse files stored on the printer's SD card.

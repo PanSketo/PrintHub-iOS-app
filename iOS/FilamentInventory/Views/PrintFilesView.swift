@@ -1,8 +1,6 @@
 import SwiftUI
 
 // MARK: - Print Files View
-// Browses the Bambu printer's SD card via the NAS backend FTPS proxy.
-// Shows folders and .3mf files as tiles with embedded PNG thumbnails.
 
 struct PrintFilesView: View {
     @EnvironmentObject var nasService: NASService
@@ -10,20 +8,28 @@ struct PrintFilesView: View {
 
     @State private var files: [PrinterFile] = []
     @State private var navStack: [(name: String, path: String)] = [("Print Files", "/")]
-    @State private var isLoading  = false
+    @State private var isLoading    = false
     @State private var error: String?
     @State private var confirmFile: PrinterFile?
     @State private var printingPath: String?
     @State private var toast = ""
 
+    // Selection mode
+    @State private var isSelecting  = false
+    @State private var selected     = Set<String>()   // file paths
+    @State private var showDeleteConfirm = false
+    @State private var isDeleting   = false
+
     var currentPath:  String { navStack.last?.path ?? "/" }
     var currentTitle: String { navStack.last?.name ?? "Print Files" }
     var isAtRoot:     Bool   { navStack.count == 1 }
 
-    // Show only folders and .3mf / .gcode.3mf — hide raw gcode & misc files
     var visibleFiles: [PrinterFile] {
         files.filter { $0.isDirectory || $0.name.lowercased().contains(".3mf") }
     }
+
+    // Only non-folder files can be selected
+    var selectableFiles: [PrinterFile] { visibleFiles.filter { !$0.isDirectory } }
 
     let columns = [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
 
@@ -40,45 +46,35 @@ struct PrintFilesView: View {
                     tileGrid
                 }
             }
-            .navigationTitle(currentTitle)
+            .navigationTitle(isSelecting ? "\(selected.count) selected" : currentTitle)
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    if !isAtRoot {
-                        Button(action: goBack) {
-                            HStack(spacing: 3) {
-                                Image(systemName: "chevron.left")
-                                Text(navStack.dropLast().last?.name ?? "Back")
-                                    .lineLimit(1)
-                            }
-                            .foregroundColor(.orange)
-                        }
-                    }
-                }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    if isLoading {
-                        ProgressView().scaleEffect(0.8)
-                    } else {
-                        Button(action: load) { Image(systemName: "arrow.clockwise") }
-                    }
-                }
-            }
+            .toolbar { toolbarContent }
             .onAppear(perform: load)
+            // Print confirmation
             .confirmationDialog(
                 "Start Print?",
                 isPresented: Binding(get: { confirmFile != nil }, set: { if !$0 { confirmFile = nil } }),
                 titleVisibility: .visible
             ) {
                 if let file = confirmFile {
-                    Button("Print \"\(file.friendlyName)\"") {
-                        Task { await sendPrint(file) }
-                    }
+                    Button("Print \"\(file.friendlyName)\"") { Task { await sendPrint(file) } }
                     Button("Cancel", role: .cancel) { confirmFile = nil }
                 }
             } message: {
                 if let file = confirmFile {
                     Text(file.displaySize.map { "\(file.friendlyName)  ·  \($0)" } ?? file.friendlyName)
                 }
+            }
+            // Delete confirmation
+            .confirmationDialog(
+                "Delete \(selected.count) file\(selected.count == 1 ? "" : "s")?",
+                isPresented: $showDeleteConfirm,
+                titleVisibility: .visible
+            ) {
+                Button("Delete", role: .destructive) { Task { await deleteSelected() } }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This will permanently remove the selected files from the printer's SD card.")
             }
             .overlay(alignment: .bottom) {
                 if !toast.isEmpty {
@@ -95,6 +91,61 @@ struct PrintFilesView: View {
         }
     }
 
+    // MARK: - Toolbar
+
+    @ToolbarContentBuilder
+    var toolbarContent: some ToolbarContent {
+        // Leading
+        ToolbarItem(placement: .navigationBarLeading) {
+            if isSelecting {
+                Button("Cancel") { exitSelection() }
+                    .foregroundColor(.orange)
+            } else if !isAtRoot {
+                Button(action: goBack) {
+                    HStack(spacing: 3) {
+                        Image(systemName: "chevron.left")
+                        Text(navStack.dropLast().last?.name ?? "Back").lineLimit(1)
+                    }
+                    .foregroundColor(.orange)
+                }
+            }
+        }
+
+        // Trailing
+        ToolbarItemGroup(placement: .navigationBarTrailing) {
+            if isSelecting {
+                // Select all toggle
+                Button(selected.count == selectableFiles.count ? "None" : "All") {
+                    if selected.count == selectableFiles.count {
+                        selected.removeAll()
+                    } else {
+                        selected = Set(selectableFiles.map(\.path))
+                    }
+                }
+                .foregroundColor(.orange)
+
+                // Delete button
+                Button {
+                    if !selected.isEmpty { showDeleteConfirm = true }
+                } label: {
+                    if isDeleting {
+                        ProgressView().scaleEffect(0.8)
+                    } else {
+                        Image(systemName: "trash")
+                            .foregroundColor(selected.isEmpty ? .secondary : .red)
+                    }
+                }
+                .disabled(selected.isEmpty || isDeleting)
+            } else {
+                if isLoading {
+                    ProgressView().scaleEffect(0.8)
+                } else {
+                    Button(action: load) { Image(systemName: "arrow.clockwise") }
+                }
+            }
+        }
+    }
+
     // MARK: - Tile grid
 
     var tileGrid: some View {
@@ -104,15 +155,13 @@ struct PrintFilesView: View {
                     PrintFileTile(
                         file: file,
                         thumbnailURL: file.isDirectory ? nil : nasService.thumbnailURL(forFile: file.path, using: printerConfig),
-                        isPrinting: printingPath == file.path
-                    ) {
-                        if file.isDirectory {
-                            navStack.append((file.friendlyName, file.path))
-                            load()
-                        } else {
-                            confirmFile = file
-                        }
-                    }
+                        isPrinting: printingPath == file.path,
+                        isSelecting: isSelecting,
+                        isSelected: selected.contains(file.path),
+                        onTap: { handleTap(file) },
+                        onSelect: { handleSelect(file) },
+                        onDelete: { handleDeleteSingle(file) }
+                    )
                 }
             }
             .padding(.horizontal, 16)
@@ -120,6 +169,69 @@ struct PrintFilesView: View {
             .padding(.bottom, 24)
         }
         .refreshable { load() }
+    }
+
+    // MARK: - Tap / long-press handling
+
+    func handleTap(_ file: PrinterFile) {
+        if isSelecting {
+            if file.isDirectory { return }     // folders not selectable
+            if selected.contains(file.path) {
+                selected.remove(file.path)
+            } else {
+                selected.insert(file.path)
+            }
+        } else {
+            if file.isDirectory {
+                navStack.append((file.friendlyName, file.path))
+                load()
+            } else {
+                confirmFile = file
+            }
+        }
+    }
+
+    func handleSelect(_ file: PrinterFile) {
+        guard !file.isDirectory else { return }
+        isSelecting = true
+        selected.insert(file.path)
+    }
+
+    func handleDeleteSingle(_ file: PrinterFile) {
+        guard !file.isDirectory else { return }
+        selected = [file.path]
+        showDeleteConfirm = true
+    }
+
+    func exitSelection() {
+        isSelecting = false
+        selected.removeAll()
+    }
+
+    // MARK: - Delete
+
+    func deleteSelected() async {
+        guard !selected.isEmpty else { return }
+        isDeleting = true
+        let toDelete = selected
+        var failed = 0
+        for path in toDelete {
+            do {
+                try await nasService.deletePrinterFile(path: path, using: printerConfig)
+            } catch {
+                failed += 1
+            }
+        }
+        await MainActor.run {
+            files.removeAll { toDelete.contains($0.path) }
+            exitSelection()
+            isDeleting = false
+        }
+        if failed == 0 {
+            await showToast("🗑️ Deleted \(toDelete.count > 1 ? "\(toDelete.count) files" : "file")")
+        } else {
+            await showToast("⚠️ \(failed) file\(failed == 1 ? "" : "s") failed to delete")
+        }
     }
 
     // MARK: - State views
@@ -157,6 +269,7 @@ struct PrintFilesView: View {
     func goBack() {
         guard navStack.count > 1 else { return }
         navStack.removeLast()
+        exitSelection()
         load()
     }
 
@@ -198,12 +311,16 @@ struct PrintFileTile: View {
     let file: PrinterFile
     let thumbnailURL: URL?
     let isPrinting: Bool
+    let isSelecting: Bool
+    let isSelected: Bool
     let onTap: () -> Void
+    let onSelect: () -> Void
+    let onDelete: () -> Void
 
     var body: some View {
-        Button(action: onTap) {
-            VStack(spacing: 0) {
-                // ── Thumbnail / preview area ──────────────────────────────
+        VStack(spacing: 0) {
+            // Thumbnail area
+            ZStack(alignment: .topTrailing) {
                 ZStack {
                     Color(.systemGray6)
 
@@ -214,12 +331,9 @@ struct PrintFileTile: View {
                     } else if let url = thumbnailURL {
                         AsyncImage(url: url) { phase in
                             switch phase {
-                            case .success(let image):
-                                image.resizable().scaledToFill()
-                            case .failure:
-                                fallbackIcon
-                            default:
-                                ProgressView()
+                            case .success(let image): image.resizable().scaledToFill()
+                            case .failure:            fallbackIcon
+                            default:                  ProgressView()
                             }
                         }
                         .clipped()
@@ -227,42 +341,68 @@ struct PrintFileTile: View {
                         fallbackIcon
                     }
 
-                    // Printing spinner overlay
                     if isPrinting {
                         Color.black.opacity(0.45)
                         ProgressView().tint(.white).scaleEffect(1.3)
+                    }
+
+                    // Selection dimming
+                    if isSelecting && !file.isDirectory {
+                        Color.black.opacity(isSelected ? 0.35 : 0.0)
                     }
                 }
                 .frame(height: 130)
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
 
-                // ── Metadata strip ────────────────────────────────────────
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(file.friendlyName)
-                        .font(.caption.weight(.semibold))
-                        .foregroundColor(.primary)
-                        .lineLimit(2)
-                        .multilineTextAlignment(.leading)
-
-                    if let size = file.displaySize {
-                        Text(size)
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
-                    } else if file.isDirectory {
-                        Text("Folder")
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
-                    }
+                // Checkmark badge
+                if isSelecting && !file.isDirectory {
+                    Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                        .font(.title3)
+                        .foregroundColor(isSelected ? .white : .white.opacity(0.7))
+                        .shadow(radius: 2)
+                        .padding(8)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 6)
             }
-            .background(Color(.secondarySystemGroupedBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .shadow(color: .black.opacity(0.08), radius: 4, x: 0, y: 2)
+
+            // Metadata strip
+            VStack(alignment: .leading, spacing: 3) {
+                Text(file.friendlyName)
+                    .font(.caption.weight(.semibold))
+                    .foregroundColor(.primary)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+
+                if let size = file.displaySize {
+                    Text(size).font(.caption2).foregroundColor(.secondary)
+                } else if file.isDirectory {
+                    Text("Folder").font(.caption2).foregroundColor(.secondary)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 6)
         }
-        .buttonStyle(.plain)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color(.secondarySystemGroupedBackground))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(isSelected ? Color.red : Color.clear, lineWidth: 2)
+                )
+        )
+        .shadow(color: .black.opacity(0.08), radius: 4, x: 0, y: 2)
+        .contentShape(Rectangle())
+        .onTapGesture { onTap() }
+        .contextMenu {
+            if !file.isDirectory && !isSelecting {
+                Button { onSelect() } label: {
+                    Label("Select", systemImage: "checkmark.circle")
+                }
+                Button(role: .destructive) { onDelete() } label: {
+                    Label("Delete", systemImage: "trash")
+                }
+            }
+        }
     }
 
     var fallbackIcon: some View {
