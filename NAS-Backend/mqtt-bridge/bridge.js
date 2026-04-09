@@ -143,6 +143,11 @@ function deductFilamentWeight(filamentId, weightUsedG, printName, durationSecond
     return null;
   }
 
+  // Compute cost at log time (same formula as the iOS app)
+  const costEUR = (filament.pricePaid > 0 && filament.totalWeightG > 0)
+    ? Math.round((filament.pricePaid / filament.totalWeightG) * weightUsedG * 100) / 100
+    : null;
+
   // Create print job record
   const job = {
     id: crypto.randomUUID(),
@@ -153,7 +158,8 @@ function deductFilamentWeight(filamentId, weightUsedG, printName, durationSecond
     date: new Date().toISOString(),
     notes: 'Auto-logged by Bambu Lab MQTT bridge',
     success: true,
-    source: 'bambu_auto'
+    source: 'bambu_auto',
+    costEUR: costEUR
   };
 
   db.prepare(`
