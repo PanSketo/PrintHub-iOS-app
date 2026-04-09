@@ -80,9 +80,9 @@ A self-hosted iOS app for 3D printing enthusiasts. Track your filament inventory
 
 ## Setup
 
-### Step 1 — Server
+Step 1 — Server
 
-**1. Clone the repo on your server**
+1. Clone the repo on your server**
 ```bash
 git clone https://github.com/PanSketo/PrintHub-iOS-app.git
 cd PrintHub-iOS-app
@@ -123,6 +123,8 @@ Should return {"status":"ok",...}
 
 5. Remote access (optional)
 Forward port 3456 on your router to your server's local IP. Use a DDNS hostname for a stable remote URL.
+
+
 
 Step 2 — Build the iOS App
 No Mac required. Use GitHub Actions (free).
