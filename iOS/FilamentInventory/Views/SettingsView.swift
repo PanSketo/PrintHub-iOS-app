@@ -113,7 +113,7 @@ struct SettingsView: View {
                     HStack {
                         Text("NAS URL")
                         Spacer()
-                        TextField("http://your-server-ip:3456", text: $nasURL)
+                        TextField("Server URL", text: $nasURL)
                             .multilineTextAlignment(.trailing)
                             .autocapitalization(.none)
                             .keyboardType(.URL)
@@ -165,7 +165,7 @@ struct SettingsView: View {
                 } header: {
                     Text("NAS Connection")
                 } footer: {
-                    Text("Local: http://your-server-ip:3456\nRemote: http://your-ddns-hostname:3456")
+                    Text("Enter your server's URL and API key")
                         .font(.caption)
                 }
 
@@ -557,7 +557,7 @@ struct AddPrinterSheet: View {
                     HStack {
                         Text("NAS URL")
                         Spacer()
-                        TextField("http://your-server-ip:3456", text: $nasURL)
+                        TextField("Server URL", text: $nasURL)
                             .multilineTextAlignment(.trailing)
                             .autocapitalization(.none)
                             .keyboardType(.URL)
@@ -624,13 +624,10 @@ struct NASSetupView: View {
             VStack(spacing: 16) {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("NAS URL").font(.caption).foregroundColor(.secondary)
-                    TextField("http://your-server-ip:3456", text: $nasURL)
+                    TextField("Server URL", text: $nasURL)
                         .textFieldStyle(.roundedBorder)
                         .autocapitalization(.none)
                         .keyboardType(.URL)
-                    Text("Or use DDNS: http://your-ddns-hostname:3456")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
                 }
 
                 VStack(alignment: .leading, spacing: 6) {
