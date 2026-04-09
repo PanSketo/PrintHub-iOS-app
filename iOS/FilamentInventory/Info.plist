@@ -44,13 +44,11 @@
 		<true/>
 	</dict>
 
-	<!-- Supported orientations — portrait default; landscape enabled for fullscreen camera -->
+	<!-- Supported orientations — portrait default; landscape unlocked dynamically by AppDelegate for camera fullscreen -->
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
 		<string>UIInterfaceOrientationPortraitUpsideDown</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 
 	<key>UILaunchScreen</key>

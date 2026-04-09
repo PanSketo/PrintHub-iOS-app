@@ -1,8 +1,31 @@
 import SwiftUI
 import AppIntents
+import UIKit
+
+// MARK: - Orientation Manager
+
+/// Lets any part of the app grant or revoke landscape permission.
+/// AppDelegate queries this so it takes effect immediately.
+final class OrientationManager {
+    static let shared = OrientationManager()
+    private init() {}
+    var allowed: UIInterfaceOrientationMask = .portrait
+}
+
+// MARK: - App Delegate
+
+class AppDelegate: NSObject, UIApplicationDelegate {
+    func application(_ application: UIApplication,
+                     supportedInterfaceOrientationsFor window: UIWindow?) -> UIInterfaceOrientationMask {
+        OrientationManager.shared.allowed
+    }
+}
+
+// MARK: - App Entry Point
 
 @main
 struct FilamentInventoryApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
     @StateObject private var nasService = NASService.shared
     @StateObject private var inventoryStore = InventoryStore.shared
     @StateObject private var notificationManager = NotificationManager.shared

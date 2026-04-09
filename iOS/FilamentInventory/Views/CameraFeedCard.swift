@@ -181,19 +181,18 @@ struct CameraFeedCard: View {
         }
         .onChange(of: showFullscreen) { showing in
             if !showing {
-                // Restore portrait after the cover's dismiss animation completes
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-                    requestOrientation(.portrait)
+                // Revoke landscape permission first so requestGeometryUpdate
+                // below has a valid portrait-only target (no more crash).
+                OrientationManager.shared.allowed = .portrait
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                    guard let scene = UIApplication.shared.connectedScenes
+                        .compactMap({ $0 as? UIWindowScene }).first else { return }
+                    scene.requestGeometryUpdate(
+                        .iOS(interfaceOrientations: .portrait)
+                    ) { _ in }
                 }
             }
         }
-    }
-
-    private func requestOrientation(_ mask: UIInterfaceOrientationMask) {
-        guard let scene = UIApplication.shared.connectedScenes
-            .compactMap({ $0 as? UIWindowScene }).first
-        else { return }
-        scene.requestGeometryUpdate(.iOS(interfaceOrientations: mask)) { _ in }
     }
 
     private func refreshLightState() async {
@@ -409,17 +408,15 @@ struct CameraFullscreenView: View {
         }
         .onAppear {
             streamer.start(baseURL: nasService.baseURL, apiKey: nasService.apiKey)
-            requestOrientation(.landscapeRight)
+            // Grant landscape permission FIRST, then request the rotation.
+            OrientationManager.shared.allowed = .landscape
+            guard let scene = UIApplication.shared.connectedScenes
+                .compactMap({ $0 as? UIWindowScene }).first else { return }
+            scene.requestGeometryUpdate(
+                .iOS(interfaceOrientations: .landscapeRight)
+            ) { _ in }
         }
         .onDisappear {
             streamer.stop()
         }
-    }
-
-    private func requestOrientation(_ mask: UIInterfaceOrientationMask) {
-        guard let scene = UIApplication.shared.connectedScenes
-            .compactMap({ $0 as? UIWindowScene }).first
-        else { return }
-        scene.requestGeometryUpdate(.iOS(interfaceOrientations: mask)) { _ in }
-    }
 }
