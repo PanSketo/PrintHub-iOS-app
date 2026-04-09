@@ -193,7 +193,7 @@ struct RestockView: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text("Price per Spool (€)")
                         .font(.subheadline)
-                    Text("Last paid: €\(String(format: "%.2f", matchedFilament.pricePaid))")
+                    Text("Last paid: €\(euDecimal(matchedFilament.pricePaid, decimals: 2))")
                         .font(.caption).foregroundColor(.secondary)
                 }
                 Spacer()
@@ -279,13 +279,14 @@ struct RestockView: View {
     // MARK: - Cost Preview Card
     var costPreviewCard: some View {
         HStack(spacing: 0) {
-            costTile(label: "Per Spool", value: String(format: "€%.2f", parsedPrice), color: .orange)
+            costTile(label: "Per Spool", value: euEuro(parsedPrice), color: .orange)
             Divider().frame(height: 40)
-            costTile(label: "Total Cost", value: String(format: "€%.2f", totalCost), color: .blue)
+            costTile(label: "Total Cost", value: euEuro(totalCost), color: .blue)
             Divider().frame(height: 40)
+            let diff = parsedPrice - matchedFilament.pricePaid
             costTile(
                 label: "vs Last Price",
-                value: String(format: "%+.2f", parsedPrice - matchedFilament.pricePaid),
+                value: (diff >= 0 ? "+" : "") + euDecimal(abs(diff), decimals: 2),
                 color: parsedPrice <= matchedFilament.pricePaid ? .green : .red
             )
         }

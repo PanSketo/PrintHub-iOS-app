@@ -153,9 +153,9 @@ struct TotalSpendIntent: AppIntent {
         let store = InventoryStore.shared
         let total = store.totalSpend
         let printCost = store.printJobs.compactMap(\.costEUR).reduce(0, +)
-        var msg = String(format: "You've spent €%.2f on filament across \(store.totalFilaments) spools.", total)
+        var msg = "You've spent \(euEuro(total)) on filament across \(store.totalFilaments) spools."
         if printCost > 0 {
-            msg += String(format: " Logged prints total €%.2f.", printCost)
+            msg += " Logged prints total \(euEuro(printCost))."
         }
         return .result(value: msg, dialog: "\(msg)")
     }

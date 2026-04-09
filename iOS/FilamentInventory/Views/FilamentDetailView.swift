@@ -275,15 +275,15 @@ struct WeightManagementCard: View {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
                         Text("Remaining:").foregroundColor(.secondary).font(.subheadline)
-                        Text("\(Int(filament.remainingWeightG))g").fontWeight(.bold)
+                        Text(euGrams(filament.remainingWeightG)).fontWeight(.bold)
                     }
                     HStack {
                         Text("Used:").foregroundColor(.secondary).font(.subheadline)
-                        Text("\(Int(filament.usedWeightG))g").fontWeight(.bold)
+                        Text(euGrams(filament.usedWeightG)).fontWeight(.bold)
                     }
                     HStack {
                         Text("Total:").foregroundColor(.secondary).font(.subheadline)
-                        Text("\(Int(filament.totalWeightG))g").fontWeight(.bold)
+                        Text(euGrams(filament.totalWeightG)).fontWeight(.bold)
                     }
                 }
                 Spacer()
@@ -412,10 +412,10 @@ struct PrintHistoryCard: View {
                     }
                     Spacer()
                     VStack(alignment: .trailing, spacing: 2) {
-                        Text("\(Int(job.weightUsedG))g")
+                        Text(euGrams(job.weightUsedG))
                             .font(.subheadline).fontWeight(.bold)
                         if let cost = job.costEUR {
-                            Text(String(format: "€%.3f", cost))
+                            Text(euEuro(cost, decimals: 3))
                                 .font(.caption2).foregroundColor(.secondary)
                         }
                     }
@@ -441,7 +441,7 @@ struct CostInfoCard: View {
     var body: some View {
         HStack(spacing: 0) {
             VStack(spacing: 4) {
-                Text(String(format: "€%.2f", filament.pricePaid))
+                Text(euEuro(filament.pricePaid))
                     .font(.title2).fontWeight(.black)
                 Text("Paid").font(.caption).foregroundColor(.secondary)
             }
@@ -450,7 +450,7 @@ struct CostInfoCard: View {
             Divider().frame(height: 40)
 
             VStack(spacing: 4) {
-                Text(String(format: "€%.4f", costPerGram))
+                Text(euEuro(costPerGram, decimals: 4))
                     .font(.title2).fontWeight(.black)
                 Text("Per Gram").font(.caption).foregroundColor(.secondary)
             }

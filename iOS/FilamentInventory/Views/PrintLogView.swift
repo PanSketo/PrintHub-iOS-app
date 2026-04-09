@@ -20,37 +20,18 @@ struct PrintLogView: View {
     }
 
     // 1.75 mm filament, avg density 1.24 g/cm³  →  ~2.98 g per metre
-    // Thousands separator: "."  |  Decimal separator: ","
     var totalLengthText: String {
         let meters = totalWeightUsed / 2.98
         if meters >= 1000 {
-            let km    = meters / 1000
-            let whole = Int(km)
-            let frac  = Int((km - Double(whole)) * 100)
-            return "\(whole),\(String(format: "%02d", frac))km"
+            return euDecimal(meters / 1000, decimals: 2) + "km"
         } else {
             return "\(Int(meters.rounded()))m"
         }
     }
 
-    // Formats grams with "." as thousands separator (e.g. 4588 → "4.588g")
-    var formattedWeight: String {
-        let n = Int(totalWeightUsed)
-        if n >= 1000 {
-            return "\(n / 1000).\(String(format: "%03d", n % 1000))g"
-        }
-        return "\(n)g"
-    }
+    var formattedWeight: String { euGrams(totalWeightUsed) }
 
-    // Formats euro cost with "," as decimal separator (e.g. 98.39 → "€98,39")
-    var formattedCost: String {
-        let euros = Int(totalPrintCost)
-        let cents = Int((totalPrintCost * 100).rounded()) % 100
-        if euros >= 1000 {
-            return "€\(euros / 1000).\(String(format: "%03d", euros % 1000)),\(String(format: "%02d", cents))"
-        }
-        return "€\(euros),\(String(format: "%02d", cents))"
-    }
+    var formattedCost: String { euEuro(totalPrintCost) }
 
     var body: some View {
         NavigationStack {
@@ -219,11 +200,11 @@ struct PrintJobRow: View {
             Spacer()
 
             VStack(alignment: .trailing, spacing: 3) {
-                Text("\(Int(job.weightUsedG))g")
+                Text(euGrams(job.weightUsedG))
                     .font(.subheadline)
                     .fontWeight(.bold)
                 if let cost = job.costEUR {
-                    Text(String(format: "€%.3f", cost))
+                    Text(euEuro(cost, decimals: 3))
                         .font(.caption2)
                         .foregroundColor(.secondary)
                 }

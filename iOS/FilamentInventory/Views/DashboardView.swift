@@ -133,7 +133,7 @@ struct DashboardView: View {
                 )
                 StatCard(
                     title: "Total Spend",
-                    value: String(format: "€%.2f", store.totalSpend),
+                    value: euEuro(store.totalSpend),
                     icon: "eurosign.circle.fill",
                     color: .green
                 )
@@ -142,7 +142,7 @@ struct DashboardView: View {
             HStack(spacing: 12) {
                 StatCard(
                     title: "Weight Left",
-                    value: "\(Int(store.totalWeightRemaining))g",
+                    value: euGrams(store.totalWeightRemaining),
                     icon: "scalemass.fill",
                     color: .purple
                 )
@@ -275,7 +275,7 @@ struct LowStockRow: View {
 
             Spacer()
 
-            Text("\(Int(filament.remainingWeightG))g")
+            Text(euGrams(filament.remainingWeightG))
                 .font(.subheadline)
                 .fontWeight(.bold)
                 .foregroundColor(.orange)
@@ -343,7 +343,7 @@ struct RecentPrintsSection: View {
                                 .foregroundColor(.secondary)
                         }
                         Spacer()
-                        Text("\(Int(job.weightUsedG))g")
+                        Text(euGrams(job.weightUsedG))
                             .font(.subheadline)
                             .fontWeight(.medium)
                     }

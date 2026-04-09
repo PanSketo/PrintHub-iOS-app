@@ -54,7 +54,7 @@ struct SpendChartCard: View {
                 HStack(alignment: .bottom, spacing: 8) {
                     ForEach(monthlySpend, id: \.label) { item in
                         VStack(spacing: 4) {
-                            Text(String(format: "€%.0f", item.amount))
+                            Text(euEuro(item.amount, decimals: 0))
                                 .font(.system(size: 9))
                                 .foregroundColor(.secondary)
                                 .lineLimit(1)
@@ -81,7 +81,7 @@ struct SpendChartCard: View {
                     Text("Total spend:")
                         .font(.subheadline).foregroundColor(.secondary)
                     Spacer()
-                    Text(String(format: "€%.2f", store.totalSpend))
+                    Text(euEuro(store.totalSpend))
                         .font(.subheadline).fontWeight(.bold)
                 }
             }
@@ -292,7 +292,7 @@ struct WeightSummaryCard: View {
 
             HStack(spacing: 20) {
                 VStack(spacing: 4) {
-                    Text("\(Int(remainingWeight))g")
+                    Text(euGrams(remainingWeight))
                         .font(.system(.title2, design: .rounded)).fontWeight(.black)
                         .foregroundColor(.green)
                     Text("Remaining")
@@ -301,7 +301,7 @@ struct WeightSummaryCard: View {
                 .frame(maxWidth: .infinity)
 
                 VStack(spacing: 4) {
-                    Text("\(Int(usedWeight))g")
+                    Text(euGrams(usedWeight))
                         .font(.system(.title2, design: .rounded)).fontWeight(.black)
                         .foregroundColor(.orange)
                     Text("Used")
@@ -310,7 +310,7 @@ struct WeightSummaryCard: View {
                 .frame(maxWidth: .infinity)
 
                 VStack(spacing: 4) {
-                    Text("\(Int(totalWeight))g")
+                    Text(euGrams(totalWeight))
                         .font(.system(.title2, design: .rounded)).fontWeight(.black)
                     Text("Total")
                         .font(.caption).foregroundColor(.secondary)
