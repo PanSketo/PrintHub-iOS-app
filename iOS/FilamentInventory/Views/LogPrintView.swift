@@ -12,6 +12,7 @@ struct LogPrintView: View {
     @State private var minutes: Double = 0
     @State private var notes = ""
     @State private var success = true
+    @State private var printDate = Date()
 
     var body: some View {
         NavigationStack {
@@ -96,6 +97,7 @@ struct LogPrintView: View {
                 }
 
                 Section {
+                    DatePicker("Date", selection: $printDate, in: ...Date(), displayedComponents: [.date, .hourAndMinute])
                     Toggle("Print Successful", isOn: $success)
                         .tint(.green)
                     TextField("Notes...", text: $notes, axis: .vertical)
@@ -118,7 +120,7 @@ struct LogPrintView: View {
                             printName: printName.isEmpty ? "Untitled Print" : printName,
                             weightUsedG: weightUsed,
                             duration: duration > 0 ? duration : nil,
-                            date: Date(),
+                            date: printDate,
                             notes: notes,
                             success: success
                         )
