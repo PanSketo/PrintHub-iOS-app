@@ -20,7 +20,10 @@ class InventoryStore: ObservableObject {
         filaments.reduce(0) { $0 + $1.pricePaid }
     }
 
-    var totalFilaments: Int { filaments.count }
+    // Counts spools by weight: each 1 kg = 1 spool (a 2 kg entry counts as 2)
+    var totalFilaments: Int {
+        filaments.reduce(0) { $0 + max(1, Int(($1.totalWeightG / 1000.0).rounded())) }
+    }
 
     var lowStockFilaments: [Filament] {
         filaments.filter { $0.remainingWeightG < lowStockThreshold && $0.remainingWeightG > 0 }
