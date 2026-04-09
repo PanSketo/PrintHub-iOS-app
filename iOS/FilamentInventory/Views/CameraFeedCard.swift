@@ -419,4 +419,5 @@ struct CameraFullscreenView: View {
         .onDisappear {
             streamer.stop()
         }
+    }
 }
