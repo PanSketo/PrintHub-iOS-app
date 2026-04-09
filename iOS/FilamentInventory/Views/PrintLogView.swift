@@ -19,9 +19,35 @@ struct PrintLogView: View {
         store.printJobs.compactMap(\.costEUR).reduce(0, +)
     }
 
-    // 1.75 mm filament, avg density 1.24 g/cm³  →  ~2.98 g per metre
+    // Returns grams-per-metre for 1.75 mm filament of the given type.
+    // Formula: density (g/cm³) × cross-section area (π × 0.0875² cm²) × 100 cm/m
+    private func gramsPerMeter(for type: FilamentType) -> Double {
+        let area = Double.pi * pow(0.0875, 2)   // cm² for 1.75 mm diameter
+        let density: Double
+        switch type {
+        case .pla, .plaPlus, .silk, .wood: density = 1.24
+        case .petg:                        density = 1.27
+        case .abs:                         density = 1.05
+        case .asa:                         density = 1.07
+        case .tpu, .tpe, .flex:           density = 1.21
+        case .nylon:                       density = 1.13
+        case .hips:                        density = 1.07
+        case .pva:                         density = 1.19
+        case .carbon:                      density = 1.30
+        default:                           density = 1.24
+        }
+        return density * area * 100
+    }
+
+    var totalLengthMeters: Double {
+        store.printJobs.reduce(0.0) { total, job in
+            let type = store.filaments.first(where: { $0.id == job.filamentId })?.type ?? .pla
+            return total + job.weightUsedG / gramsPerMeter(for: type)
+        }
+    }
+
     var totalLengthText: String {
-        let meters = totalWeightUsed / 2.98
+        let meters = totalLengthMeters
         if meters >= 1000 {
             return euDecimal(meters / 1000, decimals: 2) + "km"
         } else {
