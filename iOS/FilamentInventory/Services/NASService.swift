@@ -641,7 +641,7 @@ struct PrinterFile: Codable, Identifiable {
         guard let s = size, !isDirectory else { return nil }
         if s < 1_024             { return "\(s) B" }
         if s < 1_048_576         { return "\(s / 1_024) KB" }
-        return String(format: "%.1f MB", Double(s) / 1_048_576)
+        return euMB(Double(s) / 1_048_576)
     }
 
     var isPrintable: Bool {
@@ -671,7 +671,7 @@ struct TimelapseFile: Codable, Identifiable {
     var displaySize: String? {
         guard let s = size else { return nil }
         if s < 1_048_576 { return "\(s / 1_024) KB" }
-        return String(format: "%.1f MB", Double(s) / 1_048_576)
+        return euMB(Double(s) / 1_048_576)
     }
 
     /// Human-readable name: strips ".mp4" suffix.

@@ -43,7 +43,7 @@ struct LogPrintView: View {
                         HStack {
                             Text("Weight Used")
                             Spacer()
-                            Text("\(Int(weightUsed))g")
+                            Text(euGrams(weightUsed))
                                 .fontWeight(.bold)
                                 .foregroundColor(.orange)
                         }
@@ -65,7 +65,7 @@ struct LogPrintView: View {
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                                 Spacer()
-                                Text(String(format: "€%.3f", (filament.pricePaid / filament.totalWeightG) * weightUsed))
+                                Text(euEuro((filament.pricePaid / filament.totalWeightG) * weightUsed, decimals: 3))
                                     .font(.caption)
                                     .fontWeight(.semibold)
                                     .foregroundColor(.blue)
@@ -183,7 +183,7 @@ struct EditFilamentView: View {
                         HStack {
                             Text("Total Weight")
                             Spacer()
-                            Text("\(Int(totalWeight))g").fontWeight(.semibold)
+                            Text(euGrams(totalWeight)).fontWeight(.semibold)
                         }
                         Slider(value: $totalWeight, in: 100...5000, step: 50).tint(.orange)
                     }
@@ -191,7 +191,7 @@ struct EditFilamentView: View {
                         HStack {
                             Text("Remaining")
                             Spacer()
-                            Text("\(Int(remainingWeight))g").fontWeight(.semibold)
+                            Text(euGrams(remainingWeight)).fontWeight(.semibold)
                         }
                         Slider(value: $remainingWeight, in: 0...totalWeight, step: 10).tint(.blue)
                     }
@@ -251,7 +251,7 @@ struct EditFilamentView: View {
                 selectedType = filament.type
                 totalWeight = filament.totalWeightG
                 remainingWeight = filament.remainingWeightG
-                pricePaid = String(format: "%.2f", filament.pricePaid)
+                pricePaid = euDecimal(filament.pricePaid, decimals: 2)
                 notes = filament.notes
                 imageURL = filament.imageURL ?? ""
             }

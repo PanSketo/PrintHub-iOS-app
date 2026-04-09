@@ -66,7 +66,7 @@ struct PriceHistoryView: View {
                 ForEach(allEntries) { entry in
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(String(format: "€%.2f", entry.price))
+                            Text(euEuro(entry.price))
                                 .font(.subheadline).fontWeight(.semibold)
                             Text(entry.date.formatted(date: .abbreviated, time: .omitted))
                                 .font(.caption).foregroundColor(.secondary)
@@ -79,7 +79,7 @@ struct PriceHistoryView: View {
                         // Price change indicator vs previous
                         if let prev = previousPrice(for: entry) {
                             let diff = entry.price - prev
-                            Label(String(format: "%+.2f", diff), systemImage: diff >= 0 ? "arrow.up" : "arrow.down")
+                            Label((diff >= 0 ? "+" : "") + euDecimal(abs(diff), decimals: 2), systemImage: diff >= 0 ? "arrow.up" : "arrow.down")
                                 .font(.caption).fontWeight(.semibold)
                                 .foregroundColor(diff >= 0 ? .red : .green)
                         }
@@ -114,7 +114,7 @@ struct PriceHistoryView: View {
                     HStack {
                         Text("Current price")
                         Spacer()
-                        Text(String(format: "€%.2f", currentFilament.pricePaid))
+                        Text(euEuro(currentFilament.pricePaid))
                             .foregroundColor(.secondary)
                     }
                 } header: { Text("Reference") }
@@ -146,7 +146,7 @@ struct PriceHistoryView: View {
 
     func priceTile(label: String, value: Double, color: Color) -> some View {
         VStack(spacing: 3) {
-            Text(String(format: "€%.2f", value))
+            Text(euEuro(value))
                 .font(.caption).fontWeight(.bold).foregroundColor(color)
             Text(label)
                 .font(.caption2).foregroundColor(.secondary)

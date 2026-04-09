@@ -276,7 +276,7 @@ struct PrintCostCalculatorView: View {
         } footer: {
             let total = rent + internet + accounting + misc
             let perHour = monthlyHours > 0 ? total / monthlyHours : 0
-            Text("Total €\(String(format: "%.0f", total))/mo ÷ \(Int(monthlyHours)) h/mo = \(String(format: "%.2f", perHour)) €/h added to each print.")
+            Text("Total €\(euDecimal(total, decimals: 0))/mo ÷ \(Int(monthlyHours)) h/mo = \(euDecimal(perHour, decimals: 2)) €/h added to each print.")
         }
     }
 
@@ -332,19 +332,19 @@ struct PrintCostCalculatorView: View {
 
     private var formattedPercent: String {
         profitMargin.truncatingRemainder(dividingBy: 1) == 0
-            ? String(format: "%.0f", profitMargin)
-            : String(format: "%.1f", profitMargin)
+            ? euDecimal(profitMargin, decimals: 0)
+            : euDecimal(profitMargin, decimals: 1)
     }
 
     private func euroFormatted(_ value: Double) -> String {
-        String(format: "€%.2f", value)
+        euEuro(value)
     }
 
     private func syncSettingsTexts() {
         func fmt(_ v: Double) -> String {
             v.truncatingRemainder(dividingBy: 1) == 0
-                ? String(format: "%.0f", v)
-                : String(format: "%.3f", v).replacingOccurrences(of: #"\.?0+$"#, with: "",
+                ? euDecimal(v, decimals: 0)
+                : euDecimal(v, decimals: 3).replacingOccurrences(of: #"[,]?0+$"#, with: "",
                                                                    options: .regularExpression)
         }
         electricityRateText = fmt(electricityRate)
@@ -426,7 +426,7 @@ private struct SlotRow: View {
                     }
                     Spacer()
                     if slot.grams > 0 {
-                        Text(String(format: "%.0f g", slot.grams))
+                        Text(euGrams(slot.grams))
                             .font(.caption).foregroundColor(.secondary)
                     }
                 } else {
@@ -497,7 +497,7 @@ private struct BreakdownRow: View {
         HStack {
             Text(label)
             Spacer()
-            Text(String(format: "€%.2f", value))
+            Text(euEuro(value))
                 .fontWeight(.medium)
                 .foregroundColor(color)
                 .monospacedDigit()

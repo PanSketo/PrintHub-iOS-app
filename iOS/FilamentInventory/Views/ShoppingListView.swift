@@ -37,7 +37,7 @@ struct ShoppingListView: View {
                             Divider().frame(height: 44)
                             summaryTile(value: "\(shoppingItems.filter { $0.isLowStock && !$0.isEmpty }.count)", label: "Low stock", color: .orange)
                             Divider().frame(height: 44)
-                            summaryTile(value: String(format: "€%.0f", totalEstimatedCost), label: "Est. cost", color: .green)
+                            summaryTile(value: euEuro(totalEstimatedCost, decimals: 0), label: "Est. cost", color: .green)
                         }
                         .padding(.vertical, 6)
                     }
@@ -103,7 +103,7 @@ struct ShoppingListView: View {
         if !emptyItems.isEmpty {
             lines.append("❌ EMPTY — Need to replace:")
             for f in emptyItems {
-                lines.append("  • \(f.brand) \(f.type.rawValue) \(f.color.name) (\(Int(f.totalWeightG))g) — Last paid €\(String(format: "%.2f", f.pricePaid))")
+                lines.append("  • \(f.brand) \(f.type.rawValue) \(f.color.name) (\(Int(f.totalWeightG))g) — Last paid €\(euDecimal(f.pricePaid, decimals: 2))")
                 if let url = f.reorderURL { lines.append("    🔗 \(url)") }
             }
             lines.append("")
@@ -118,7 +118,7 @@ struct ShoppingListView: View {
             lines.append("")
         }
 
-        lines.append("Total estimated reorder cost: €\(String(format: "%.2f", totalEstimatedCost))")
+        lines.append("Total estimated reorder cost: €\(euDecimal(totalEstimatedCost, decimals: 2))")
 
         shareText = lines.joined(separator: "\n")
         showShareSheet = true
@@ -168,7 +168,7 @@ struct ShoppingItemRow: View {
             Spacer()
 
             VStack(alignment: .trailing, spacing: 3) {
-                Text(String(format: "€%.2f", filament.pricePaid))
+                Text(euEuro(filament.pricePaid))
                     .font(.subheadline).fontWeight(.bold)
                 Text("last price")
                     .font(.caption2).foregroundColor(.secondary)
