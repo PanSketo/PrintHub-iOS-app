@@ -14,6 +14,8 @@ struct PrintFilesView: View {
     @State private var printingPath: String?
     @State private var toast = ""
 
+    @State private var searchText    = ""
+
     // Selection mode
     @State private var isSelecting  = false
     @State private var selected     = Set<String>()   // file paths
@@ -28,8 +30,13 @@ struct PrintFilesView: View {
         files.filter { $0.isDirectory || $0.name.lowercased().contains(".3mf") }
     }
 
+    var filteredFiles: [PrinterFile] {
+        guard !searchText.isEmpty else { return visibleFiles }
+        return visibleFiles.filter { $0.friendlyName.localizedCaseInsensitiveContains(searchText) }
+    }
+
     // Only non-folder files can be selected
-    var selectableFiles: [PrinterFile] { visibleFiles.filter { !$0.isDirectory } }
+    var selectableFiles: [PrinterFile] { filteredFiles.filter { !$0.isDirectory } }
 
     let columns = [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
 
@@ -40,7 +47,7 @@ struct PrintFilesView: View {
                     loadingView
                 } else if let err = error {
                     errorView(err)
-                } else if visibleFiles.isEmpty && !isLoading {
+                } else if filteredFiles.isEmpty && !isLoading {
                     emptyView
                 } else {
                     tileGrid
@@ -48,6 +55,7 @@ struct PrintFilesView: View {
             }
             .navigationTitle(isSelecting ? "\(selected.count) selected" : currentTitle)
             .navigationBarTitleDisplayMode(.inline)
+            .searchable(text: $searchText, prompt: "Search files…")
             .toolbar { toolbarContent }
             .onAppear(perform: load)
             // Print confirmation
@@ -151,7 +159,7 @@ struct PrintFilesView: View {
     var tileGrid: some View {
         ScrollView {
             LazyVGrid(columns: columns, spacing: 12) {
-                ForEach(visibleFiles) { file in
+                ForEach(filteredFiles) { file in
                     PrintFileTile(
                         file: file,
                         thumbnailURL: file.isDirectory ? nil : nasService.thumbnailURL(forFile: file.path, using: printerConfig),
@@ -258,8 +266,10 @@ struct PrintFilesView: View {
 
     var emptyView: some View {
         VStack(spacing: 10) {
-            Image(systemName: "folder").font(.largeTitle).foregroundColor(.secondary)
-            Text("No .3mf files found").foregroundColor(.secondary)
+            Image(systemName: searchText.isEmpty ? "folder" : "magnifyingglass")
+                .font(.largeTitle).foregroundColor(.secondary)
+            Text(searchText.isEmpty ? "No .3mf files found" : "No files match \"\(searchText)\"")
+                .foregroundColor(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
