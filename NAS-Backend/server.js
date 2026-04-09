@@ -825,6 +825,33 @@ app.get('/api/printer/timelapse/stream', async (req, res) => {
   }
 });
 
+// ── Timelapse Delete ──────────────────────────────────────────────────────────
+// DELETE /api/printer/timelapse?path=/timelapse/foo.mp4
+app.delete('/api/printer/timelapse', authenticate, async (req, res) => {
+  const filePath = req.query.path;
+  if (!filePath || !filePath.endsWith('.mp4') || filePath.includes('..')) {
+    return res.status(400).json({ error: 'Invalid path — must be an .mp4 file path' });
+  }
+  if (!PRINTER_IP || !PRINTER_ACCESS_CODE) {
+    return res.status(503).json({ error: 'Printer not configured' });
+  }
+  const client = new ftp.Client();
+  client.ftp.verbose = false;
+  try {
+    await client.access({
+      host: PRINTER_IP, port: 990,
+      user: 'bblp', password: PRINTER_ACCESS_CODE,
+      secure: 'implicit', secureOptions: { rejectUnauthorized: false }
+    });
+    await client.remove(filePath);
+    client.close();
+    res.json({ ok: true });
+  } catch (err) {
+    try { client.close(); } catch (_) {}
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── Start Print ───────────────────────────────────────────────────────────────
 // POST /api/printer/print   — body: { "file_path": "/sdcard/benchy.3mf" }
 // Sends a project_file print command to the printer via MQTT.

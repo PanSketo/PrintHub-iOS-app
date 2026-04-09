@@ -58,7 +58,8 @@ struct TimelapseCard: View {
                         file: file,
                         isSaving: savingPath == file.path,
                         onPlay: { playerItem = file },
-                        onSave: { Task { await saveToPhotos(file) } }
+                        onSave: { Task { await saveToPhotos(file) } },
+                        onDelete: { Task { await deleteTimelapse(file) } }
                     )
                 }
                 if timelapses.count > displayedCount {
@@ -148,6 +149,19 @@ struct TimelapseCard: View {
         savingPath = nil
     }
 
+    // MARK: - Delete
+
+    @MainActor
+    func deleteTimelapse(_ file: TimelapseFile) async {
+        do {
+            try await nasService.deleteTimelapse(path: file.path, using: printerConfig)
+            withAnimation { timelapses.removeAll { $0.id == file.id } }
+            await showToast("🗑️ Deleted")
+        } catch {
+            await showToast("❌ \(error.localizedDescription)")
+        }
+    }
+
     @MainActor
     func showToast(_ message: String) async {
         withAnimation { toast = message }
@@ -163,57 +177,95 @@ struct TimelapseRow: View {
     let isSaving: Bool
     let onPlay: () -> Void
     let onSave: () -> Void
+    let onDelete: () -> Void
+
+    @State private var offset: CGFloat = 0
+    private let deleteWidth: CGFloat = 72
 
     var body: some View {
-        HStack(spacing: 12) {
-            // Thumbnail placeholder
-            ZStack {
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(Color(.tertiarySystemBackground))
-                    .frame(width: 64, height: 40)
-                Image(systemName: "film.fill")
-                    .foregroundColor(.orange)
-                    .font(.title3)
-            }
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(file.displayName)
-                    .font(.caption)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.primary)
-                    .lineLimit(2)
-                if let size = file.displaySize {
-                    Text(size)
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
+        ZStack(alignment: .trailing) {
+            // Red delete button revealed by swipe
+            Button(action: {
+                onDelete()
+                withAnimation(.spring()) { offset = 0 }
+            }) {
+                VStack(spacing: 3) {
+                    Image(systemName: "trash.fill").font(.subheadline)
+                    Text("Delete").font(.caption2)
                 }
+                .foregroundColor(.white)
+                .frame(width: deleteWidth)
+                .frame(maxHeight: .infinity)
             }
+            .background(Color.red)
+            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
 
-            Spacer()
-
-            // Save button
-            Button(action: onSave) {
-                if isSaving {
-                    ProgressView().scaleEffect(0.8)
-                } else {
-                    Image(systemName: "arrow.down.circle")
+            // Row content slides left
+            HStack(spacing: 12) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(Color(.tertiarySystemBackground))
+                        .frame(width: 64, height: 40)
+                    Image(systemName: "film.fill")
+                        .foregroundColor(.orange)
                         .font(.title3)
-                        .foregroundColor(.blue)
+                }
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(file.displayName)
+                        .font(.caption).fontWeight(.semibold).foregroundColor(.primary)
+                        .lineLimit(2)
+                    if let size = file.displaySize {
+                        Text(size).font(.caption2).foregroundColor(.secondary)
+                    }
+                }
+
+                Spacer()
+
+                Button(action: onSave) {
+                    if isSaving {
+                        ProgressView().scaleEffect(0.8)
+                    } else {
+                        Image(systemName: "arrow.down.circle")
+                            .font(.title3).foregroundColor(.blue)
+                    }
+                }
+                .buttonStyle(.plain)
+                .frame(width: 32)
+
+                Button(action: onPlay) {
+                    Image(systemName: "play.circle.fill")
+                        .font(.title2).foregroundColor(.orange)
+                }
+                .buttonStyle(.plain)
+            }
+            .contentShape(Rectangle())
+            .background(Color(.systemBackground).opacity(0.001)) // needed for tap + drag
+            .offset(x: offset)
+            .gesture(
+                DragGesture(minimumDistance: 10)
+                    .onChanged { value in
+                        guard value.translation.width < 0 else {
+                            if offset < 0 { withAnimation(.spring()) { offset = 0 } }
+                            return
+                        }
+                        offset = max(value.translation.width, -deleteWidth)
+                    }
+                    .onEnded { value in
+                        withAnimation(.spring()) {
+                            offset = value.translation.width < -(deleteWidth / 2) ? -deleteWidth : 0
+                        }
+                    }
+            )
+            .onTapGesture {
+                if offset != 0 {
+                    withAnimation(.spring()) { offset = 0 }
+                } else {
+                    onPlay()
                 }
             }
-            .buttonStyle(.plain)
-            .frame(width: 32)
-
-            // Play button
-            Button(action: onPlay) {
-                Image(systemName: "play.circle.fill")
-                    .font(.title2)
-                    .foregroundColor(.orange)
-            }
-            .buttonStyle(.plain)
         }
-        .contentShape(Rectangle())
-        .onTapGesture(perform: onPlay)
+        .clipped()
     }
 }
 

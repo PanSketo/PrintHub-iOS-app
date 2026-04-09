@@ -574,6 +574,21 @@ class NASService: ObservableObject {
         try FileManager.default.moveItem(at: localURL, to: tempURL)
         return tempURL
     }
+
+    func deleteTimelapse(path: String, using config: PrinterConfig? = nil) async throws {
+        let base = config?.nasURL ?? baseURL
+        let key  = config?.apiKey ?? apiKey
+        guard var components = URLComponents(string: "\(base)/api/printer/timelapse") else {
+            throw NASError.invalidURL
+        }
+        components.queryItems = [URLQueryItem(name: "path", value: path)]
+        guard let url = components.url else { throw NASError.invalidURL }
+        var request = URLRequest(url: url)
+        request.httpMethod = "DELETE"
+        request.addValue(key, forHTTPHeaderField: "X-API-Key")
+        let (_, response) = try await session.data(for: request)
+        guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw NASError.serverError }
+    }
 }
 
 // MARK: - Printer File Model
