@@ -843,7 +843,9 @@ app.get('/api/printer/timelapse/stream', async (req, res) => {
 // DELETE /api/printer/timelapse?path=/timelapse/foo.mp4
 app.delete('/api/printer/timelapse', authenticate, async (req, res) => {
   const filePath = req.query.path;
+  console.log(`[timelapse/delete] Request received: path=${filePath}`);
   if (!filePath || !filePath.endsWith('.mp4') || filePath.includes('..')) {
+    console.warn(`[timelapse/delete] Rejected invalid path: ${filePath}`);
     return res.status(400).json({ error: 'Invalid path — must be an .mp4 file path' });
   }
   if (!PRINTER_IP || !PRINTER_ACCESS_CODE) {
