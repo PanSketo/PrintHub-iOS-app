@@ -165,7 +165,7 @@ struct SettingsView: View {
                 } header: {
                     Text("NAS Connection")
                 } footer: {
-                    Text("Local: http://192.168.1.200:3456\nRemote: http://pansketo.arcdns.tech:3456")
+                    Text("Local: http://192.168.1.200:3456\nRemote: http://your-ddns-hostname:3456")
                         .font(.caption)
                 }
 
@@ -628,7 +628,7 @@ struct NASSetupView: View {
                         .textFieldStyle(.roundedBorder)
                         .autocapitalization(.none)
                         .keyboardType(.URL)
-                    Text("Or use DDNS: http://pansketo.arcdns.tech:3456")
+                    Text("Or use DDNS: http://your-ddns-hostname:3456")
                         .font(.caption2)
                         .foregroundColor(.secondary)
                 }
