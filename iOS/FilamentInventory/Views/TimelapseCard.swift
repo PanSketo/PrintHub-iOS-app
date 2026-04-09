@@ -180,67 +180,78 @@ struct TimelapseRow: View {
     let onDelete: () -> Void
 
     @State private var offset: CGFloat = 0
-    private let deleteWidth: CGFloat = 72
+    private let deleteWidth: CGFloat = 76
 
     var body: some View {
-        ZStack(alignment: .trailing) {
-            // Red delete button revealed by swipe
-            Button(action: {
-                onDelete()
-                withAnimation(.spring()) { offset = 0 }
-            }) {
-                VStack(spacing: 3) {
-                    Image(systemName: "trash.fill").font(.subheadline)
-                    Text("Delete").font(.caption2)
-                }
-                .foregroundColor(.white)
-                .frame(width: deleteWidth)
-                .frame(maxHeight: .infinity)
-            }
-            .background(Color.red)
-            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        GeometryReader { geo in
+            HStack(spacing: 0) {
 
-            // Row content slides left
-            HStack(spacing: 12) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(Color(.tertiarySystemBackground))
-                        .frame(width: 64, height: 40)
-                    Image(systemName: "film.fill")
-                        .foregroundColor(.orange)
-                        .font(.title3)
-                }
-
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(file.displayName)
-                        .font(.caption).fontWeight(.semibold).foregroundColor(.primary)
-                        .lineLimit(2)
-                    if let size = file.displaySize {
-                        Text(size).font(.caption2).foregroundColor(.secondary)
+                // ── Main row content ──────────────────────────────────────
+                HStack(spacing: 12) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .fill(Color(.tertiarySystemBackground))
+                            .frame(width: 64, height: 40)
+                        Image(systemName: "film.fill")
+                            .foregroundColor(.orange)
+                            .font(.title3)
                     }
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(file.displayName)
+                            .font(.caption).fontWeight(.semibold).foregroundColor(.primary)
+                            .lineLimit(2)
+                        if let size = file.displaySize {
+                            Text(size).font(.caption2).foregroundColor(.secondary)
+                        }
+                    }
+
+                    Spacer()
+
+                    Button(action: onSave) {
+                        if isSaving {
+                            ProgressView().scaleEffect(0.8)
+                        } else {
+                            Image(systemName: "arrow.down.circle")
+                                .font(.title3).foregroundColor(.blue)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .frame(width: 32)
+
+                    Button(action: onPlay) {
+                        Image(systemName: "play.circle.fill")
+                            .font(.title2).foregroundColor(.orange)
+                    }
+                    .buttonStyle(.plain)
                 }
-
-                Spacer()
-
-                Button(action: onSave) {
-                    if isSaving {
-                        ProgressView().scaleEffect(0.8)
+                .frame(width: geo.size.width)   // exactly fills the visible area
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    if offset != 0 {
+                        withAnimation(.spring()) { offset = 0 }
                     } else {
-                        Image(systemName: "arrow.down.circle")
-                            .font(.title3).foregroundColor(.blue)
+                        onPlay()
                     }
                 }
-                .buttonStyle(.plain)
-                .frame(width: 32)
 
-                Button(action: onPlay) {
-                    Image(systemName: "play.circle.fill")
-                        .font(.title2).foregroundColor(.orange)
+                // ── Delete button (off-screen to the right by default) ────
+                Button {
+                    withAnimation(.spring()) { offset = 0 }
+                    onDelete()
+                } label: {
+                    VStack(spacing: 3) {
+                        Image(systemName: "trash.fill").font(.subheadline)
+                        Text("Delete").font(.caption2)
+                    }
+                    .foregroundColor(.white)
+                    .frame(width: deleteWidth)
+                    .frame(maxHeight: .infinity)
+                    .background(Color.red)
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 }
                 .buttonStyle(.plain)
             }
-            .contentShape(Rectangle())
-            .background(Color(.systemBackground).opacity(0.001)) // needed for tap + drag
             .offset(x: offset)
             .gesture(
                 DragGesture(minimumDistance: 10)
@@ -257,14 +268,8 @@ struct TimelapseRow: View {
                         }
                     }
             )
-            .onTapGesture {
-                if offset != 0 {
-                    withAnimation(.spring()) { offset = 0 }
-                } else {
-                    onPlay()
-                }
-            }
         }
+        .frame(height: 54)
         .clipped()
     }
 }
