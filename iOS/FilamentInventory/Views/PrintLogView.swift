@@ -19,6 +19,16 @@ struct PrintLogView: View {
         store.printJobs.compactMap(\.costEUR).reduce(0, +)
     }
 
+    // 1.75 mm filament, avg density 1.24 g/cm³  →  ~2.98 g per metre
+    var totalLengthText: String {
+        let meters = totalWeightUsed / 2.98
+        if meters >= 1000 {
+            return String(format: "%.2fkm", meters / 1000)
+        } else {
+            return String(format: "%.0fm", meters)
+        }
+    }
+
     var body: some View {
         NavigationStack {
             List {
@@ -27,7 +37,7 @@ struct PrintLogView: View {
                     HStack {
                         VStack(alignment: .leading) {
                             Text("\(store.printJobs.count)")
-                                .font(.system(.title, design: .rounded))
+                                .font(.system(.title2, design: .rounded))
                                 .fontWeight(.black)
                             Text("Total Prints")
                                 .font(.caption)
@@ -38,9 +48,21 @@ struct PrintLogView: View {
                         Spacer()
                         VStack(alignment: .center) {
                             Text("\(Int(totalWeightUsed))g")
-                                .font(.system(.title, design: .rounded))
+                                .font(.system(.title2, design: .rounded))
                                 .fontWeight(.black)
                             Text("Total Used")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        Spacer()
+                        Divider().frame(height: 40)
+                        Spacer()
+                        VStack(alignment: .center) {
+                            Text(totalLengthText)
+                                .font(.system(.title2, design: .rounded))
+                                .fontWeight(.black)
+                                .foregroundColor(.orange)
+                            Text("Length")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
@@ -50,7 +72,7 @@ struct PrintLogView: View {
                             Spacer()
                             VStack(alignment: .trailing) {
                                 Text(String(format: "€%.2f", totalPrintCost))
-                                    .font(.system(.title, design: .rounded))
+                                    .font(.system(.title2, design: .rounded))
                                     .fontWeight(.black)
                                     .foregroundColor(.blue)
                                 Text("Print Cost")
