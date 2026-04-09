@@ -314,85 +314,82 @@ struct PrintFileTile: View {
     let onLongPress: () -> Void
 
     var body: some View {
-        Button(action: onTap) {
-            VStack(spacing: 0) {
-                // Thumbnail area
-                ZStack(alignment: .topTrailing) {
-                    ZStack {
-                        Color(.systemGray6)
+        VStack(spacing: 0) {
+            // Thumbnail area
+            ZStack(alignment: .topTrailing) {
+                ZStack {
+                    Color(.systemGray6)
 
-                        if file.isDirectory {
-                            Image(systemName: "folder.fill")
-                                .font(.system(size: 44))
-                                .foregroundColor(.orange)
-                        } else if let url = thumbnailURL {
-                            AsyncImage(url: url) { phase in
-                                switch phase {
-                                case .success(let image): image.resizable().scaledToFill()
-                                case .failure:            fallbackIcon
-                                default:                  ProgressView()
-                                }
+                    if file.isDirectory {
+                        Image(systemName: "folder.fill")
+                            .font(.system(size: 44))
+                            .foregroundColor(.orange)
+                    } else if let url = thumbnailURL {
+                        AsyncImage(url: url) { phase in
+                            switch phase {
+                            case .success(let image): image.resizable().scaledToFill()
+                            case .failure:            fallbackIcon
+                            default:                  ProgressView()
                             }
-                            .clipped()
-                        } else {
-                            fallbackIcon
                         }
-
-                        if isPrinting {
-                            Color.black.opacity(0.45)
-                            ProgressView().tint(.white).scaleEffect(1.3)
-                        }
-
-                        // Selection dimming
-                        if isSelecting && !file.isDirectory {
-                            Color.black.opacity(isSelected ? 0.35 : 0.0)
-                        }
+                        .clipped()
+                    } else {
+                        fallbackIcon
                     }
-                    .frame(height: 130)
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
 
-                    // Checkmark badge
+                    if isPrinting {
+                        Color.black.opacity(0.45)
+                        ProgressView().tint(.white).scaleEffect(1.3)
+                    }
+
+                    // Selection dimming
                     if isSelecting && !file.isDirectory {
-                        Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                            .font(.title3)
-                            .foregroundColor(isSelected ? .white : .white.opacity(0.7))
-                            .shadow(radius: 2)
-                            .padding(8)
+                        Color.black.opacity(isSelected ? 0.35 : 0.0)
                     }
                 }
+                .frame(height: 130)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
 
-                // Metadata strip
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(file.friendlyName)
-                        .font(.caption.weight(.semibold))
-                        .foregroundColor(.primary)
-                        .lineLimit(2)
-                        .multilineTextAlignment(.leading)
-
-                    if let size = file.displaySize {
-                        Text(size).font(.caption2).foregroundColor(.secondary)
-                    } else if file.isDirectory {
-                        Text("Folder").font(.caption2).foregroundColor(.secondary)
-                    }
+                // Checkmark badge
+                if isSelecting && !file.isDirectory {
+                    Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                        .font(.title3)
+                        .foregroundColor(isSelected ? .white : .white.opacity(0.7))
+                        .shadow(radius: 2)
+                        .padding(8)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 6)
             }
-            .background(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Color(.secondarySystemGroupedBackground))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .stroke(isSelected ? Color.red : Color.clear, lineWidth: 2)
-                    )
-            )
-            .shadow(color: .black.opacity(0.08), radius: 4, x: 0, y: 2)
+
+            // Metadata strip
+            VStack(alignment: .leading, spacing: 3) {
+                Text(file.friendlyName)
+                    .font(.caption.weight(.semibold))
+                    .foregroundColor(.primary)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+
+                if let size = file.displaySize {
+                    Text(size).font(.caption2).foregroundColor(.secondary)
+                } else if file.isDirectory {
+                    Text("Folder").font(.caption2).foregroundColor(.secondary)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 6)
         }
-        .buttonStyle(.plain)
-        .simultaneousGesture(
-            LongPressGesture(minimumDuration: 0.5).onEnded { _ in onLongPress() }
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color(.secondarySystemGroupedBackground))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(isSelected ? Color.red : Color.clear, lineWidth: 2)
+                )
         )
+        .shadow(color: .black.opacity(0.08), radius: 4, x: 0, y: 2)
+        .contentShape(Rectangle())
+        .onTapGesture { onTap() }
+        .onLongPressGesture(minimumDuration: 0.5) { onLongPress() }
     }
 
     var fallbackIcon: some View {
