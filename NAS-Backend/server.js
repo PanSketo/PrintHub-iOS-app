@@ -602,26 +602,30 @@ app.post('/api/printer/light', (req, res) => {
 // DELETE /api/printer/files?path=/sdcard/foo.3mf
 app.delete('/api/printer/files', authenticate, async (req, res) => {
   const filePath = req.query.path;
+  console.log(`[files/delete] Request received: path=${filePath}`);
   if (!filePath || filePath.includes('..') || filePath === '/') {
+    console.warn(`[files/delete] Rejected invalid path: ${filePath}`);
     return res.status(400).json({ error: 'Invalid path' });
   }
   if (!PRINTER_IP || !PRINTER_ACCESS_CODE) {
     return res.status(503).json({ error: 'Printer not configured' });
   }
   const client = new ftp.Client();
-  client.ftp.verbose = false;
+  client.ftp.verbose = true;
   try {
+    console.log(`[files/delete] Connecting to ${PRINTER_IP}:990`);
     await client.access({
       host: PRINTER_IP, port: 990, user: 'bblp',
       password: PRINTER_ACCESS_CODE,
       secure: 'implicit', secureOptions: { rejectUnauthorized: false }
     });
+    console.log(`[files/delete] Connected — sending DELE ${filePath}`);
     await client.remove(filePath);
     client.close();
-    console.log(`[files/delete] Deleted: ${filePath}`);
+    console.log(`[files/delete] ✓ Deleted: ${filePath}`);
     res.json({ ok: true });
   } catch (err) {
-    console.error(`[files/delete] Error deleting ${filePath}:`, err.message);
+    console.error(`[files/delete] ✗ Error deleting ${filePath}:`, err.message);
     try { client.close(); } catch (_) {}
     res.status(500).json({ error: err.message });
   }
