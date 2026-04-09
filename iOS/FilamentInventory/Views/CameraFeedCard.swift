@@ -179,6 +179,21 @@ struct CameraFeedCard: View {
             CameraFullscreenView()
                 .environmentObject(nasService)
         }
+        .onChange(of: showFullscreen) { showing in
+            if !showing {
+                // Restore portrait after the cover's dismiss animation completes
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                    requestOrientation(.portrait)
+                }
+            }
+        }
+    }
+
+    private func requestOrientation(_ mask: UIInterfaceOrientationMask) {
+        guard let scene = UIApplication.shared.connectedScenes
+            .compactMap({ $0 as? UIWindowScene }).first
+        else { return }
+        scene.requestGeometryUpdate(.iOS(interfaceOrientations: mask)) { _ in }
     }
 
     private func refreshLightState() async {
@@ -227,7 +242,7 @@ struct CameraFeedCard: View {
     }
 
     private var feedArea: some View {
-        ZStack(alignment: .topTrailing) {
+        ZStack {
             Color.black
                 .aspectRatio(16 / 9, contentMode: .fit)
                 .clipShape(RoundedRectangle(cornerRadius: 12))
@@ -268,8 +283,8 @@ struct CameraFeedCard: View {
                         .foregroundColor(.white.opacity(0.4))
                 }
             }
-
-            // Fullscreen expand button
+        }
+        .overlay(alignment: .topTrailing) {
             Button { showFullscreen = true } label: {
                 Image(systemName: "arrow.up.left.and.arrow.down.right")
                     .font(.system(size: 13, weight: .semibold))
@@ -398,7 +413,6 @@ struct CameraFullscreenView: View {
         }
         .onDisappear {
             streamer.stop()
-            requestOrientation(.portrait)
         }
     }
 
@@ -406,8 +420,6 @@ struct CameraFullscreenView: View {
         guard let scene = UIApplication.shared.connectedScenes
             .compactMap({ $0 as? UIWindowScene }).first
         else { return }
-        scene.requestGeometryUpdate(
-            .iOS(interfaceOrientations: mask)
-        ) { _ in }
+        scene.requestGeometryUpdate(.iOS(interfaceOrientations: mask)) { _ in }
     }
 }
