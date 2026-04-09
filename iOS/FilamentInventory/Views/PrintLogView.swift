@@ -23,10 +23,22 @@ struct PrintLogView: View {
     var totalLengthText: String {
         let meters = totalWeightUsed / 2.98
         if meters >= 1000 {
-            return String(format: "%.2fkm", meters / 1000)
+            let km    = meters / 1000
+            let whole = Int(km)
+            let frac  = Int((km - Double(whole)) * 100)
+            return "\(whole).\(String(format: "%02d", frac))km"
         } else {
-            return String(format: "%.0fm", meters)
+            return "\(Int(meters.rounded()))m"
         }
+    }
+
+    // Formats grams with "." as the thousands separator (e.g. 4588 → "4.588g")
+    var formattedWeight: String {
+        let n = Int(totalWeightUsed)
+        if n >= 1000 {
+            return "\(n / 1000).\(String(format: "%03d", n % 1000))g"
+        }
+        return "\(n)g"
     }
 
     var body: some View {
@@ -47,7 +59,7 @@ struct PrintLogView: View {
                         Divider().frame(height: 40)
                         Spacer()
                         VStack(alignment: .center) {
-                            Text("\(Int(totalWeightUsed))g")
+                            Text(formattedWeight)
                                 .font(.system(.title2, design: .rounded))
                                 .fontWeight(.black)
                             Text("Total Used")
