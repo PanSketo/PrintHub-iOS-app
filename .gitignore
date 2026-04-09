@@ -26,3 +26,6 @@ DerivedData/
 # Build artifacts
 build/
 dist/
+
+# Claude Code local config
+CLAUDE.md
