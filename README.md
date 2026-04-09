@@ -6,6 +6,19 @@ A self-hosted iOS app for 3D printing enthusiasts. Track your filament inventory
 
 ---
 
+## Table of Contents
+
+- [Features](#features)
+- [Requirements](#requirements)
+- [Setup](#setup)
+- [Updating the Server](#updating-the-server)
+- [Troubleshooting](#troubleshooting)
+- [Tech Stack](#tech-stack)
+- [Project Structure](#project-structure)
+- [License](#license)
+
+---
+
 ## Features
 
 ### Filament Inventory
@@ -80,117 +93,149 @@ A self-hosted iOS app for 3D printing enthusiasts. Track your filament inventory
 
 ## Setup
 
-Step 1 — Server
+### Step 1 — Server
 
-1. Clone the repo on your server**
+**1. Clone the repo on your server**
 ```bash
 git clone https://github.com/PanSketo/PrintHub-iOS-app.git
 cd PrintHub-iOS-app
+```
 
-2. Create your environment file
-
+**2. Create your environment file**
+```bash
 cp NAS-Backend/.env.example .env
+```
 
-Edit .env and fill in your values:
-
+Edit `.env` and fill in your values:
+```env
 API_KEY=your_long_random_secret_key
 PRINTER_IP=192.168.1.x
 PRINTER_SERIAL=XXXXXXXXXXXXXXXX
 PRINTER_ACCESS_CODE=XXXXXXXX
 BASE_URL=http://your-server-ip:3456
+```
 
-API_KEY — any strong random string; you'll enter this in the app
-PRINTER_IP — your Bambu printer's local IP address
-PRINTER_SERIAL — shown on the printer screen under Settings → Device
-PRINTER_ACCESS_CODE — shown on the printer screen under Settings → Network
-BASE_URL — your server's address (local IP or DDNS hostname)
-3. Start the containers
+| Variable | Description |
+|---|---|
+| `API_KEY` | Any strong random string — you'll enter this in the app |
+| `PRINTER_IP` | Your Bambu printer's local IP address |
+| `PRINTER_SERIAL` | Shown on the printer screen under Settings → Device |
+| `PRINTER_ACCESS_CODE` | Shown on the printer screen under Settings → Network |
+| `BASE_URL` | Your server's address (local IP or DDNS hostname) |
 
+**3. Start the containers**
+```bash
 sudo docker-compose up -d
 sudo docker-compose logs --tail=20
+```
 
 A successful start shows:
-
+```
 🖨️  PrintHub Backend running on port 3456
 📁 Database: /data/filaments.db
 🔑 API Key configured: YES ✅
+```
 
-4. Verify it's working
+**4. Verify it's working**
 
-http://YOUR_SERVER_IP:3456/api/health
+Open `http://YOUR_SERVER_IP:3456/api/health` in a browser — it should return `{"status":"ok",...}`.
 
-Should return {"status":"ok",...}
+**5. Remote access (optional)**
 
-5. Remote access (optional)
-Forward port 3456 on your router to your server's local IP. Use a DDNS hostname for a stable remote URL.
+Forward port `3456` on your router to your server's local IP. Use a DDNS hostname for a stable remote URL.
 
+---
 
+### Step 2 — Build the iOS App
 
-
-Step 2 — Build the iOS App
 No Mac required. Use GitHub Actions (free).
 
-Fork this repo to your GitHub account
-Go to Actions → Build PrintHub IPA → Run workflow → Run workflow
-Wait ~10 minutes
-Download PrintHub.ipa from the Artifacts section when the build goes green ✅
-Step 3 — Install the App
-Signulous (recommended — no expiry, no re-signing)
+1. Fork this repo to your GitHub account
+2. Go to **Actions → Build PrintHub IPA → Run workflow → Run workflow**
+3. Wait ~10 minutes
+4. Download `PrintHub.ipa` from the **Artifacts** section when the build goes green ✅
 
-Upload the .ipa to signulous.com
-Install directly to your iPhone
-Sideloadly (free, requires re-signing every 7 days with a free Apple ID)
+---
 
-Download Sideloadly on your Mac or PC
-Connect your iPhone, drag the .ipa in, sign with your Apple ID
-On iPhone: Settings → General → VPN & Device Management → trust your Apple ID
-Step 4 — First Launch
-Open PrintHub on your iPhone
-Enter your Server URL and API Key when prompted
-Tap Test Connection → ✅
-Tap Continue — you're in
-To add more printers later: Settings → Printers → Add Printer
+### Step 3 — Install the App
 
-Updating the Server
+**Signulous** *(recommended — no expiry, no re-signing)*
+1. Upload the `.ipa` to [signulous.com](https://www.signulous.com)
+2. Install directly to your iPhone
+
+**Sideloadly** *(free, requires re-signing every 7 days with a free Apple ID)*
+1. Download [Sideloadly](https://sideloadly.io) on your Mac or PC
+2. Connect your iPhone, drag the `.ipa` in, sign with your Apple ID
+3. On iPhone: **Settings → General → VPN & Device Management → trust your Apple ID**
+
+---
+
+### Step 4 — First Launch
+
+1. Open PrintHub on your iPhone
+2. Enter your **Server URL** and **API Key** when prompted
+3. Tap **Test Connection** → ✅
+4. Tap **Continue** — you're in
+
+> To add more printers later: **Settings → Printers → Add Printer**
+
+---
+
+## Updating the Server
+
+```bash
 cd PrintHub-iOS-app
 git pull
 sudo docker-compose down && sudo docker-compose up -d
+```
 
-Troubleshooting
-Cannot connect to server
+---
 
-Check the container is running: sudo docker-compose ps
-Test locally first: http://YOUR_SERVER_IP:3456/api/health
-Make sure port 3456 isn't blocked by a firewall
-Print files tab shows an error
+## Troubleshooting
 
-Verify PRINTER_IP and PRINTER_ACCESS_CODE in your .env
-The printer must be powered on and on the same network as the server
-LAN mode must be enabled on the printer
-Timelapse list is empty
+**Cannot connect to server**
+- Check the container is running: `sudo docker-compose ps`
+- Test locally first: `http://YOUR_SERVER_IP:3456/api/health`
+- Make sure port `3456` isn't blocked by a firewall
 
-Timelapses only appear after the first timelapse is recorded
-Enable timelapse recording in Bambu Studio or Bambu Handy before starting a print
-GitHub Actions build fails
+**Print files tab shows an error**
+- Verify `PRINTER_IP` and `PRINTER_ACCESS_CODE` in your `.env`
+- The printer must be powered on and on the same network as the server
+- LAN mode must be enabled on the printer
 
-Check the Actions log for the specific error
-Most common cause: Xcode version — the workflow auto-selects the latest available
-Barcode scanning not working
+**Timelapse list is empty**
+- Timelapses only appear after the first timelapse is recorded
+- Enable timelapse recording in Bambu Studio or Bambu Handy before starting a print
 
-iPhone Settings → PrintHub → Camera → Allow
-No push notifications
+**GitHub Actions build fails**
+- Check the Actions log for the specific error
+- Most common cause: Xcode version — the workflow auto-selects the latest available
 
-iPhone Settings → PrintHub → Notifications → Allow All
-Tech Stack
-Layer	Technology
-iOS app	Swift + SwiftUI + AVKit + Photos + App Intents
-Minimum iOS	16.0
-Backend	Node.js + Express + SQLite (better-sqlite3)
-Printer communication	MQTT over TLS + implicit FTPS port 990
-MQTT bridge	Node.js Docker sidecar
-Barcode lookup	UPC Item DB + Open Food Facts
-CI/CD	GitHub Actions
-Project Structure
+**Barcode scanning not working**
+- iPhone **Settings → PrintHub → Camera → Allow**
+
+**No push notifications**
+- iPhone **Settings → PrintHub → Notifications → Allow All**
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| iOS app | Swift + SwiftUI + AVKit + Photos + App Intents |
+| Minimum iOS | 16.0 |
+| Backend | Node.js + Express + SQLite (better-sqlite3) |
+| Printer communication | MQTT over TLS + implicit FTPS port 990 |
+| MQTT bridge | Node.js Docker sidecar |
+| Barcode lookup | UPC Item DB + Open Food Facts |
+| CI/CD | GitHub Actions |
+
+---
+
+## Project Structure
+
+```
 PrintHub-iOS-app/
 ├── iOS/
 │   └── FilamentInventory/
@@ -207,6 +252,10 @@ PrintHub-iOS-app/
 │       └── bridge.js        # Bambu Lab MQTT → server bridge
 └── .github/workflows/
     └── build-ipa.yml        # GitHub Actions IPA builder
+```
 
-License
+---
+
+## License
+
 MIT — use it, fork it, adapt it for your own setup.
