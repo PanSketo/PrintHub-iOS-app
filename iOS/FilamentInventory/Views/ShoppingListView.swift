@@ -61,6 +61,15 @@ struct ShoppingListView: View {
                 }
             }
         }
+        .toolbar {
+            if !shoppingItems.isEmpty {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: shareList) {
+                        Image(systemName: "square.and.arrow.up")
+                    }
+                }
+            }
+        }
         .sheet(isPresented: $showShareSheet) {
             ShareSheet(activityItems: [shareText])
         }
