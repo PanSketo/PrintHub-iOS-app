@@ -165,7 +165,7 @@ struct SettingsView: View {
                 } header: {
                     Text("NAS Connection")
                 } footer: {
-                    Text("Local: http://REDACTED-PRINTER-IP0:3456\nRemote: http://REDACTED-DDNS:3456")
+                    Text("Local: http://REDACTED-PRINTER-IP0:3456\nRemote: http://your-ddns-hostname:3456")
                         .font(.caption)
                 }
 
@@ -628,7 +628,7 @@ struct NASSetupView: View {
                         .textFieldStyle(.roundedBorder)
                         .autocapitalization(.none)
                         .keyboardType(.URL)
-                    Text("Or use DDNS: http://REDACTED-DDNS:3456")
+                    Text("Or use DDNS: http://your-ddns-hostname:3456")
                         .font(.caption2)
                         .foregroundColor(.secondary)
                 }
