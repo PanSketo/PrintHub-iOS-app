@@ -236,6 +236,23 @@ struct WeightManagementCard: View {
     private let spoolOuterRadius: Double = 9.2  // cm — inner winding area of flange
     private let spoolHubRadius: Double   = 2.5  // cm — centre hub / core
 
+    /// Parsed manual weight — accepts comma or dot as decimal separator
+    private var parsedManualWeight: Double? {
+        Double(manualWeight.replacingOccurrences(of: ",", with: "."))
+    }
+
+    private var manualWeightError: String? {
+        guard !manualWeight.isEmpty else { return nil }
+        guard let w = parsedManualWeight else { return "Enter a valid number" }
+        if w < 0 { return "Weight can't be negative" }
+        if w > filament.totalWeightG { return "Can't exceed total weight (\(Int(filament.totalWeightG))g)" }
+        return nil
+    }
+
+    private var manualWeightValid: Bool {
+        parsedManualWeight != nil && manualWeightError == nil
+    }
+
     /// Estimated remaining grams from gap measurement
     var estimatedGrams: Double? {
         guard let d = Double(distanceCm.replacingOccurrences(of: ",", with: ".")),
@@ -319,20 +336,32 @@ struct WeightManagementCard: View {
                 }
 
             } else if isEditing {
-                HStack {
-                    TextField("Enter weight in grams", text: $manualWeight)
-                        .keyboardType(.numberPad)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                    Button("Save") {
-                        if let w = Double(manualWeight) {
-                            filament.remainingWeightG = min(w, filament.totalWeightG)
-                            filament.stockStatus = StockStatus.from(remaining: filament.remainingWeightG, total: filament.totalWeightG)
-                            store.updateFilament(filament)
-                            isEditing = false
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        TextField("Enter weight in grams", text: $manualWeight)
+                            .keyboardType(.decimalPad)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                        Button("Save") {
+                            if let w = parsedManualWeight {
+                                filament.remainingWeightG = max(0, min(w, filament.totalWeightG))
+                                filament.stockStatus = StockStatus.from(remaining: filament.remainingWeightG, total: filament.totalWeightG)
+                                store.updateFilament(filament)
+                                isEditing = false
+                            }
                         }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.orange)
+                        .disabled(!manualWeightValid)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.orange)
+                    if let error = manualWeightError {
+                        Label(error, systemImage: "exclamationmark.triangle.fill")
+                            .font(.caption)
+                            .foregroundColor(.red)
+                    } else {
+                        Text("0 – \(Int(filament.totalWeightG))g")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
                 }
                 Button("Cancel") { isEditing = false }
                     .foregroundColor(.secondary)
