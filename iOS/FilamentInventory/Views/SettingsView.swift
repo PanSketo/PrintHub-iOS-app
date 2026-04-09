@@ -113,7 +113,7 @@ struct SettingsView: View {
                     HStack {
                         Text("NAS URL")
                         Spacer()
-                        TextField("http://REDACTED-PRINTER-IP0:3456", text: $nasURL)
+                        TextField("http://your-server-ip:3456", text: $nasURL)
                             .multilineTextAlignment(.trailing)
                             .autocapitalization(.none)
                             .keyboardType(.URL)
@@ -165,7 +165,7 @@ struct SettingsView: View {
                 } header: {
                     Text("NAS Connection")
                 } footer: {
-                    Text("Local: http://REDACTED-PRINTER-IP0:3456\nRemote: http://your-ddns-hostname:3456")
+                    Text("Local: http://your-server-ip:3456\nRemote: http://your-ddns-hostname:3456")
                         .font(.caption)
                 }
 
@@ -557,7 +557,7 @@ struct AddPrinterSheet: View {
                     HStack {
                         Text("NAS URL")
                         Spacer()
-                        TextField("http://REDACTED-PRINTER-IP0:3456", text: $nasURL)
+                        TextField("http://your-server-ip:3456", text: $nasURL)
                             .multilineTextAlignment(.trailing)
                             .autocapitalization(.none)
                             .keyboardType(.URL)
@@ -598,7 +598,7 @@ struct AddPrinterSheet: View {
 // MARK: - NAS Setup View (first launch)
 struct NASSetupView: View {
     @EnvironmentObject var nasService: NASService
-    @State private var nasURL = "http://REDACTED-PRINTER-IP0:3456"
+    @State private var nasURL = ""
     @State private var apiKey = ""
     @State private var isTesting = false
     @State private var statusMessage = ""
@@ -624,7 +624,7 @@ struct NASSetupView: View {
             VStack(spacing: 16) {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("NAS URL").font(.caption).foregroundColor(.secondary)
-                    TextField("http://REDACTED-PRINTER-IP0:3456", text: $nasURL)
+                    TextField("http://your-server-ip:3456", text: $nasURL)
                         .textFieldStyle(.roundedBorder)
                         .autocapitalization(.none)
                         .keyboardType(.URL)
