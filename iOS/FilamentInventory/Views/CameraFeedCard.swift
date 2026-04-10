@@ -410,15 +410,18 @@ struct CameraFullscreenView: View {
         }
         .onAppear {
             streamer.start(baseURL: nasService.baseURL, apiKey: nasService.apiKey)
-            // Snap to landscape as soon as the fullscreen cover finishes presenting.
-            // The whole app now supports landscape so this request is always honoured.
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                guard let scene = UIApplication.shared.connectedScenes
-                    .compactMap({ $0 as? UIWindowScene }).first else { return }
-                scene.requestGeometryUpdate(
-                    .iOS(interfaceOrientations: .landscape)
-                ) { _ in }
-            }
+        }
+        .task {
+            // Wait for the cover's present animation to finish before requesting
+            // landscape. Using .task instead of asyncAfter so this is automatically
+            // cancelled if the view disappears before the delay elapses — prevents
+            // a stale geometry request firing on the underlying app.
+            try? await Task.sleep(for: .milliseconds(150))
+            guard let scene = UIApplication.shared.connectedScenes
+                .compactMap({ $0 as? UIWindowScene }).first else { return }
+            scene.requestGeometryUpdate(
+                .iOS(interfaceOrientations: .landscape)
+            ) { _ in }
         }
         .onDisappear {
             streamer.stop()

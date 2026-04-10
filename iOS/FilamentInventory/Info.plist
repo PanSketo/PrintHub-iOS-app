@@ -44,11 +44,11 @@
 		<true/>
 	</dict>
 
-	<!-- Supported orientations — portrait + landscape; all screens adapt via SwiftUI auto-layout -->
+	<!-- Supported orientations — portrait + landscape. AppDelegate returns .allButUpsideDown
+	     which excludes PortraitUpsideDown; this list matches that constraint exactly. -->
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationPortraitUpsideDown</string>
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
