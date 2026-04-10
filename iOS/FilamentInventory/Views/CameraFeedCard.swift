@@ -20,11 +20,11 @@ final class MJPEGStreamer: NSObject, ObservableObject, URLSessionDataDelegate {
 
     func start(baseURL: String, apiKey: String) {
         guard !baseURL.isEmpty else {
-            DispatchQueue.main.async { self.errorMessage = "NAS not configured" }
+            DispatchQueue.main.async { [weak self] in self?.errorMessage = "NAS not configured" }
             return
         }
         guard let url = URL(string: "\(baseURL)/api/camera/stream") else {
-            DispatchQueue.main.async { self.errorMessage = "Invalid NAS URL" }
+            DispatchQueue.main.async { [weak self] in self?.errorMessage = "Invalid NAS URL" }
             return
         }
 
@@ -34,15 +34,18 @@ final class MJPEGStreamer: NSObject, ObservableObject, URLSessionDataDelegate {
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 30
         config.timeoutIntervalForResource = 3600  // allow up to 1-hour streams
-        streamSession = URLSession(configuration: config, delegate: self, delegateQueue: nil)
+        // Run delegate callbacks on the main queue so all buffer access is
+        // on one thread — eliminates the data race between didReceive data
+        // (background) and stop() / deinit (main) writing to buffer.
+        streamSession = URLSession(configuration: config, delegate: self, delegateQueue: .main)
 
         var request = URLRequest(url: url)
         request.setValue(apiKey, forHTTPHeaderField: "X-API-Key")
 
-        DispatchQueue.main.async {
-            self.isStreaming = true
-            self.errorMessage = nil
-            self.currentFrame = nil
+        DispatchQueue.main.async { [weak self] in
+            self?.isStreaming = true
+            self?.errorMessage = nil
+            self?.currentFrame = nil
         }
         buffer = Data()
         pendingErrorRead = false
@@ -53,9 +56,9 @@ final class MJPEGStreamer: NSObject, ObservableObject, URLSessionDataDelegate {
         streamSession?.invalidateAndCancel()
         streamSession = nil
         buffer = Data()
-        DispatchQueue.main.async {
-            self.isStreaming = false
-            self.currentFrame = nil
+        DispatchQueue.main.async { [weak self] in
+            self?.isStreaming = false
+            self?.currentFrame = nil
         }
     }
 
@@ -72,9 +75,9 @@ final class MJPEGStreamer: NSObject, ObservableObject, URLSessionDataDelegate {
         case 200:
             completionHandler(.allow)
         case 401:
-            DispatchQueue.main.async {
-                self.isStreaming = false
-                self.errorMessage = "API key incorrect — check Settings"
+            DispatchQueue.main.async { [weak self] in
+                self?.isStreaming = false
+                self?.errorMessage = "API key incorrect — check Settings"
             }
             completionHandler(.cancel)
         case 503:
@@ -82,9 +85,9 @@ final class MJPEGStreamer: NSObject, ObservableObject, URLSessionDataDelegate {
             pendingErrorRead = true
             completionHandler(.allow)
         default:
-            DispatchQueue.main.async {
-                self.isStreaming = false
-                self.errorMessage = "Camera stream error (HTTP \(http.statusCode))"
+            DispatchQueue.main.async { [weak self] in
+                self?.isStreaming = false
+                self?.errorMessage = "Camera stream error (HTTP \(http.statusCode))"
             }
             completionHandler(.cancel)
         }
@@ -102,7 +105,8 @@ final class MJPEGStreamer: NSObject, ObservableObject, URLSessionDataDelegate {
 
     func urlSession(_ session: URLSession, task: URLSessionTask,
                     didCompleteWithError error: Error?) {
-        DispatchQueue.main.async {
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
             self.isStreaming = false
             if self.pendingErrorRead {
                 // Parse the 503 JSON body for the server's specific error message
@@ -140,7 +144,8 @@ final class MJPEGStreamer: NSObject, ObservableObject, URLSessionDataDelegate {
             // endRange.upperBound is past the last byte of EOI — exactly what we need
             let frameData = Data(buffer[startRange.lowerBound..<endRange.upperBound])
             if let image = UIImage(data: frameData) {
-                DispatchQueue.main.async { self.currentFrame = image }
+                // Delegate runs on OperationQueue.main — assign directly, no hop needed.
+                currentFrame = image
             }
             buffer = Data(buffer[endRange.upperBound...])
         }
