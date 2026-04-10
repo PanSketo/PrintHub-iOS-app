@@ -168,7 +168,11 @@ struct CameraFeedCard: View {
             streamer.start(baseURL: nasService.baseURL, apiKey: nasService.apiKey)
             Task { await refreshLightState() }
         }
-        .onDisappear { streamer.stop() }
+        .onDisappear {
+            // If fullscreen cover is active, leave the stream running behind it.
+            // Only stop when genuinely leaving the screen (tab switch, navigation).
+            if !showFullscreen { streamer.stop() }
+        }
         .onChange(of: nasService.isConnected) { connected in
             if connected && !streamer.isStreaming {
                 streamer.start(baseURL: nasService.baseURL, apiKey: nasService.apiKey)
@@ -176,14 +180,16 @@ struct CameraFeedCard: View {
             if connected { Task { await refreshLightState() } }
         }
         .fullScreenCover(isPresented: $showFullscreen, onDismiss: {
-            // onDismiss fires after the dismiss animation completes — safe to rotate back.
+            // Restore portrait support and notify UIKit — avoids the crash that
+            // requestGeometryUpdate causes when called during a scene transition.
             OrientationManager.shared.allowed = .portrait
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                guard let scene = UIApplication.shared.connectedScenes
-                    .compactMap({ $0 as? UIWindowScene }).first else { return }
-                scene.requestGeometryUpdate(
-                    .iOS(interfaceOrientations: .portrait)
-                ) { _ in }
+            UIApplication.shared.connectedScenes
+                .compactMap({ $0 as? UIWindowScene })
+                .first?.keyWindow?.rootViewController?
+                .setNeedsUpdateOfSupportedInterfaceOrientations()
+            // Re-start the card's stream in case onDisappear stopped it when fullscreen opened.
+            if !streamer.isStreaming {
+                streamer.start(baseURL: nasService.baseURL, apiKey: nasService.apiKey)
             }
         }) {
             CameraFullscreenView()
@@ -404,14 +410,17 @@ struct CameraFullscreenView: View {
         }
         .onAppear {
             streamer.start(baseURL: nasService.baseURL, apiKey: nasService.apiKey)
-            // Grant landscape permission FIRST, then request rotation.
-            // Small delay lets the cover finish presenting before we ask for rotation.
+            // Grant landscape FIRST, then force rotation via requestGeometryUpdate
+            // (needed to rotate even when the phone is physically held in portrait).
             OrientationManager.shared.allowed = .landscape
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
                 guard let scene = UIApplication.shared.connectedScenes
                     .compactMap({ $0 as? UIWindowScene }).first else { return }
+                // .landscape mask → system picks landscapeLeft or landscapeRight
+                // based on the phone's current physical orientation, then tracks
+                // freely between both while fullscreen is open.
                 scene.requestGeometryUpdate(
-                    .iOS(interfaceOrientations: .landscape)   // allows both left & right
+                    .iOS(interfaceOrientations: .landscape)
                 ) { _ in }
             }
         }
