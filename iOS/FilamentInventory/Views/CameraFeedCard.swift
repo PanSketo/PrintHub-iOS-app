@@ -180,14 +180,9 @@ struct CameraFeedCard: View {
             if connected { Task { await refreshLightState() } }
         }
         .fullScreenCover(isPresented: $showFullscreen, onDismiss: {
-            // Restore portrait support and notify UIKit — avoids the crash that
-            // requestGeometryUpdate causes when called during a scene transition.
-            OrientationManager.shared.allowed = .portrait
-            UIApplication.shared.connectedScenes
-                .compactMap({ $0 as? UIWindowScene })
-                .first?.keyWindow?.rootViewController?
-                .setNeedsUpdateOfSupportedInterfaceOrientations()
-            // Re-start the card's stream in case onDisappear stopped it when fullscreen opened.
+            // No forced rotation on dismiss — the app now supports landscape globally,
+            // so there is nothing to "undo" and no orientation crash.
+            // Restart the card stream in case onDisappear paused it when the cover opened.
             if !streamer.isStreaming {
                 streamer.start(baseURL: nasService.baseURL, apiKey: nasService.apiKey)
             }
@@ -410,15 +405,11 @@ struct CameraFullscreenView: View {
         }
         .onAppear {
             streamer.start(baseURL: nasService.baseURL, apiKey: nasService.apiKey)
-            // Grant landscape FIRST, then force rotation via requestGeometryUpdate
-            // (needed to rotate even when the phone is physically held in portrait).
-            OrientationManager.shared.allowed = .landscape
+            // Snap to landscape as soon as the fullscreen cover finishes presenting.
+            // The whole app now supports landscape so this request is always honoured.
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
                 guard let scene = UIApplication.shared.connectedScenes
                     .compactMap({ $0 as? UIWindowScene }).first else { return }
-                // .landscape mask → system picks landscapeLeft or landscapeRight
-                // based on the phone's current physical orientation, then tracks
-                // freely between both while fullscreen is open.
                 scene.requestGeometryUpdate(
                     .iOS(interfaceOrientations: .landscape)
                 ) { _ in }

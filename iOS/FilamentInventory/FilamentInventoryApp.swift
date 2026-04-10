@@ -2,22 +2,15 @@ import SwiftUI
 import AppIntents
 import UIKit
 
-// MARK: - Orientation Manager
-
-/// Lets any part of the app grant or revoke landscape permission.
-/// AppDelegate queries this so it takes effect immediately.
-final class OrientationManager {
-    static let shared = OrientationManager()
-    private init() {}
-    var allowed: UIInterfaceOrientationMask = .portrait
-}
-
 // MARK: - App Delegate
 
 class AppDelegate: NSObject, UIApplicationDelegate {
+    // Matches Info.plist — portrait + both landscapes, no upside-down.
+    // Declaring it here lets the camera fullscreen's requestGeometryUpdate
+    // snap to landscape immediately without Info.plist ambiguity.
     func application(_ application: UIApplication,
                      supportedInterfaceOrientationsFor window: UIWindow?) -> UIInterfaceOrientationMask {
-        OrientationManager.shared.allowed
+        .allButUpsideDown
     }
 }
 
