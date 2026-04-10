@@ -5,6 +5,12 @@ import Foundation
 
 /// Connects to the NAS /api/camera/stream endpoint and decodes the MJPEG
 /// multipart response into individual UIImage frames for display.
+///
+/// Threading: the URLSession uses delegateQueue = .main, so every callback
+/// already runs on the main thread. All @Published properties are therefore
+/// set directly (no DispatchQueue.main.async needed), which means stop()
+/// clears state *synchronously* — critical for preventing frame updates
+/// from firing into a SwiftUI view that is mid-dismiss-animation.
 final class MJPEGStreamer: NSObject, ObservableObject, URLSessionDataDelegate {
     @Published var currentFrame: UIImage?
     @Published var isStreaming = false
@@ -19,134 +25,106 @@ final class MJPEGStreamer: NSObject, ObservableObject, URLSessionDataDelegate {
     // MARK: - Public API
 
     func start(baseURL: String, apiKey: String) {
-        guard !baseURL.isEmpty else {
-            DispatchQueue.main.async { [weak self] in self?.errorMessage = "NAS not configured" }
-            return
-        }
+        guard !baseURL.isEmpty else { errorMessage = "NAS not configured"; return }
         guard let url = URL(string: "\(baseURL)/api/camera/stream") else {
-            DispatchQueue.main.async { [weak self] in self?.errorMessage = "Invalid NAS URL" }
-            return
+            errorMessage = "Invalid NAS URL"; return
         }
 
-        // Cancel any existing stream first
         streamSession?.invalidateAndCancel()
 
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 30
-        config.timeoutIntervalForResource = 3600  // allow up to 1-hour streams
-        // Run delegate callbacks on the main queue so all buffer access is
-        // on one thread — eliminates the data race between didReceive data
-        // (background) and stop() / deinit (main) writing to buffer.
+        config.timeoutIntervalForResource = 3600
+        // delegateQueue: .main → all callbacks run on main thread, same as stop() / deinit.
+        // Eliminates buffer data races and lets us assign @Published properties directly.
         streamSession = URLSession(configuration: config, delegate: self, delegateQueue: .main)
 
         var request = URLRequest(url: url)
         request.setValue(apiKey, forHTTPHeaderField: "X-API-Key")
 
-        DispatchQueue.main.async { [weak self] in
-            self?.isStreaming = true
-            self?.errorMessage = nil
-            self?.currentFrame = nil
-        }
+        isStreaming = true
+        errorMessage = nil
+        currentFrame = nil
         buffer = Data()
         pendingErrorRead = false
         streamSession?.dataTask(with: request).resume()
     }
 
+    /// Synchronously kills the stream and clears all state.
+    /// Because this is always called on the main thread (SwiftUI lifecycle,
+    /// button actions, deinit via @StateObject release), direct assignment
+    /// to @Published properties is safe — no async hop required.
     func stop() {
         streamSession?.invalidateAndCancel()
         streamSession = nil
         buffer = Data()
-        DispatchQueue.main.async { [weak self] in
-            self?.isStreaming = false
-            self?.currentFrame = nil
-        }
+        isStreaming = false
+        currentFrame = nil
     }
 
-    // MARK: - URLSessionDataDelegate
+    // MARK: - URLSessionDataDelegate (all called on main thread)
 
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask,
                     didReceive response: URLResponse,
                     completionHandler: @escaping (URLSession.ResponseDisposition) -> Void) {
-        guard let http = response as? HTTPURLResponse else {
-            completionHandler(.allow)
-            return
-        }
+        guard let http = response as? HTTPURLResponse else { completionHandler(.allow); return }
         switch http.statusCode {
         case 200:
             completionHandler(.allow)
         case 401:
-            DispatchQueue.main.async { [weak self] in
-                self?.isStreaming = false
-                self?.errorMessage = "API key incorrect — check Settings"
-            }
+            isStreaming = false
+            errorMessage = "API key incorrect — check Settings"
             completionHandler(.cancel)
         case 503:
-            // Server now sends a JSON body explaining why ffmpeg failed — collect it
             pendingErrorRead = true
             completionHandler(.allow)
         default:
-            DispatchQueue.main.async { [weak self] in
-                self?.isStreaming = false
-                self?.errorMessage = "Camera stream error (HTTP \(http.statusCode))"
-            }
+            isStreaming = false
+            errorMessage = "Camera stream error (HTTP \(http.statusCode))"
             completionHandler(.cancel)
         }
     }
 
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask,
                     didReceive data: Data) {
-        if pendingErrorRead {
-            buffer.append(data)   // accumulate 503 JSON body
-        } else {
-            buffer.append(data)
-            extractFrames()
-        }
+        buffer.append(data)
+        if !pendingErrorRead { extractFrames() }
     }
 
     func urlSession(_ session: URLSession, task: URLSessionTask,
                     didCompleteWithError error: Error?) {
-        DispatchQueue.main.async { [weak self] in
-            guard let self else { return }
-            self.isStreaming = false
-            if self.pendingErrorRead {
-                // Parse the 503 JSON body for the server's specific error message
-                let msg = (try? JSONSerialization.jsonObject(with: self.buffer) as? [String: Any])
-                    .flatMap { $0["error"] as? String }
-                    ?? "Camera unavailable — check NAS logs for ffmpeg errors"
-                self.errorMessage = msg
-            } else if let err = error as NSError?, err.code != NSURLErrorCancelled {
-                self.errorMessage = err.localizedDescription
-            } else if error == nil && self.currentFrame == nil {
-                self.errorMessage = "Camera offline — printer may be off or unreachable from NAS"
-            }
+        // Cancellation means stop() was called intentionally — state is already
+        // cleared synchronously, so do nothing here. Touching @Published properties
+        // here would trigger a SwiftUI re-render on a view that may be mid-animation.
+        if let err = error as NSError?, err.code == NSURLErrorCancelled { return }
+
+        isStreaming = false
+        if pendingErrorRead {
+            let msg = (try? JSONSerialization.jsonObject(with: buffer) as? [String: Any])
+                .flatMap { $0["error"] as? String }
+                ?? "Camera unavailable — check NAS logs for ffmpeg errors"
+            errorMessage = msg
+        } else if let err = error as NSError? {
+            errorMessage = err.localizedDescription
+        } else if currentFrame == nil {
+            errorMessage = "Camera offline — printer may be off or unreachable from NAS"
         }
     }
 
     // MARK: - JPEG Frame Extraction
 
     private func extractFrames() {
-        let soi = Data([0xFF, 0xD8])   // JPEG Start-Of-Image marker
-        let eoi = Data([0xFF, 0xD9])   // JPEG End-Of-Image marker
+        let soi = Data([0xFF, 0xD8])
+        let eoi = Data([0xFF, 0xD9])
 
         while buffer.count >= 4 {
-            guard let startRange = buffer.range(of: soi) else {
-                buffer = Data()
-                return
-            }
+            guard let startRange = buffer.range(of: soi) else { buffer = Data(); return }
             guard let endRange = buffer.range(of: eoi, in: startRange.upperBound..<buffer.endIndex) else {
-                // No complete frame yet — trim any garbage before SOI
-                if startRange.lowerBound > 0 {
-                    buffer = Data(buffer[startRange.lowerBound...])
-                }
+                if startRange.lowerBound > 0 { buffer = Data(buffer[startRange.lowerBound...]) }
                 return
             }
-
-            // endRange.upperBound is past the last byte of EOI — exactly what we need
             let frameData = Data(buffer[startRange.lowerBound..<endRange.upperBound])
-            if let image = UIImage(data: frameData) {
-                // Delegate runs on OperationQueue.main — assign directly, no hop needed.
-                currentFrame = image
-            }
+            if let image = UIImage(data: frameData) { currentFrame = image }
             buffer = Data(buffer[endRange.upperBound...])
         }
     }
@@ -397,7 +375,12 @@ struct CameraFullscreenView: View {
                         .clipShape(Capsule())
                     }
                     Spacer()
-                    Button { dismiss() } label: {
+                    Button {
+                        // Stop the stream synchronously BEFORE dismiss() so no
+                        // frame updates fire into a view mid-dismiss-animation.
+                        streamer.stop()
+                        dismiss()
+                    } label: {
                         Image(systemName: "xmark.circle.fill")
                             .font(.title2)
                             .foregroundStyle(.white, .black.opacity(0.5))
