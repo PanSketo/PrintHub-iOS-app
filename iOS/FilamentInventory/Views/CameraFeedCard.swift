@@ -175,23 +175,19 @@ struct CameraFeedCard: View {
             }
             if connected { Task { await refreshLightState() } }
         }
-        .fullScreenCover(isPresented: $showFullscreen) {
+        .fullScreenCover(isPresented: $showFullscreen, onDismiss: {
+            // onDismiss fires after the dismiss animation completes — safe to rotate back.
+            OrientationManager.shared.allowed = .portrait
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                guard let scene = UIApplication.shared.connectedScenes
+                    .compactMap({ $0 as? UIWindowScene }).first else { return }
+                scene.requestGeometryUpdate(
+                    .iOS(interfaceOrientations: .portrait)
+                ) { _ in }
+            }
+        }) {
             CameraFullscreenView()
                 .environmentObject(nasService)
-        }
-        .onChange(of: showFullscreen) { showing in
-            if !showing {
-                // Revoke landscape permission first so requestGeometryUpdate
-                // below has a valid portrait-only target (no more crash).
-                OrientationManager.shared.allowed = .portrait
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                    guard let scene = UIApplication.shared.connectedScenes
-                        .compactMap({ $0 as? UIWindowScene }).first else { return }
-                    scene.requestGeometryUpdate(
-                        .iOS(interfaceOrientations: .portrait)
-                    ) { _ in }
-                }
-            }
         }
     }
 
@@ -408,13 +404,16 @@ struct CameraFullscreenView: View {
         }
         .onAppear {
             streamer.start(baseURL: nasService.baseURL, apiKey: nasService.apiKey)
-            // Grant landscape permission FIRST, then request the rotation.
+            // Grant landscape permission FIRST, then request rotation.
+            // Small delay lets the cover finish presenting before we ask for rotation.
             OrientationManager.shared.allowed = .landscape
-            guard let scene = UIApplication.shared.connectedScenes
-                .compactMap({ $0 as? UIWindowScene }).first else { return }
-            scene.requestGeometryUpdate(
-                .iOS(interfaceOrientations: .landscapeRight)
-            ) { _ in }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                guard let scene = UIApplication.shared.connectedScenes
+                    .compactMap({ $0 as? UIWindowScene }).first else { return }
+                scene.requestGeometryUpdate(
+                    .iOS(interfaceOrientations: .landscape)   // allows both left & right
+                ) { _ in }
+            }
         }
         .onDisappear {
             streamer.stop()
