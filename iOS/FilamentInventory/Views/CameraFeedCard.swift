@@ -148,7 +148,6 @@ struct CameraFeedCard: View {
         }
         .glassCard()
         .onAppear {
-            streamer.start(baseURL: nasService.baseURL, apiKey: nasService.apiKey)
             Task { await refreshLightState() }
         }
         .onDisappear {
@@ -157,18 +156,10 @@ struct CameraFeedCard: View {
             if !showFullscreen { streamer.stop() }
         }
         .onChange(of: nasService.isConnected) { connected in
-            if connected && !streamer.isStreaming {
-                streamer.start(baseURL: nasService.baseURL, apiKey: nasService.apiKey)
-            }
             if connected { Task { await refreshLightState() } }
         }
         .fullScreenCover(isPresented: $showFullscreen, onDismiss: {
-            // No forced rotation on dismiss — the app now supports landscape globally,
-            // so there is nothing to "undo" and no orientation crash.
-            // Restart the card stream in case onDisappear paused it when the cover opened.
-            if !streamer.isStreaming {
-                streamer.start(baseURL: nasService.baseURL, apiKey: nasService.apiKey)
-            }
+            // Stream is manually controlled — do not auto-restart on fullscreen dismiss.
         }) {
             CameraFullscreenView()
                 .environmentObject(nasService)
