@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- App does not track users across apps or websites -->
+	<key>NSPrivacyTracking</key>
+	<false/>
+
+	<!-- No tracking domains -->
+	<key>NSPrivacyTrackingDomains</key>
+	<array/>
+
+	<!-- Required reason APIs used by this app -->
+	<key>NSPrivacyAccessedAPITypes</key>
+	<array>
+		<dict>
+			<!-- UserDefaults — used to persist app settings (NAS URL, API key,
+			     color scheme, notification preferences) -->
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<!-- CA92.1: Accessed to read and write information tied to the
+				     app itself, not a user profile or for tracking purposes -->
+				<string>CA92.1</string>
+			</array>
+		</dict>
+	</array>
+
+	<!-- Data types collected by this app -->
+	<key>NSPrivacyCollectedDataTypes</key>
+	<array>
+		<dict>
+			<!-- Camera images: used only for barcode scanning, not sent off-device -->
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypePhotos</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>

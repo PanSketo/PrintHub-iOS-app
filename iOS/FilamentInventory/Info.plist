@@ -25,10 +25,6 @@
 	<key>NSCameraUsageDescription</key>
 	<string>Camera is needed to scan filament barcodes for quick inventory entry.</string>
 
-	<!-- Notifications permission for low stock alerts -->
-	<key>NSUserNotificationUsageDescription</key>
-	<string>Notifications are used to alert you when filament stock is running low.</string>
-
 	<!-- Local network permission (required for iOS 14+ to connect to NAS on LAN) -->
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>PrintHub connects to your NAS on the local network to sync your filament inventory and show live printer status.</string>
@@ -40,7 +36,7 @@
 	<!-- Network access for fetching filament info and NAS sync -->
 	<key>NSAppTransportSecurity</key>
 	<dict>
-		<key>NSAllowsArbitraryLoads</key>
+		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
 
